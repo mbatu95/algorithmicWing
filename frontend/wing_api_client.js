@@ -40,9 +40,6 @@ function createWingSurfaceMesh(meshVertices, meshIndices) {
 async function visualizeWing() {
     // Parameters are now set in Python backend, not here
     const data = await fetchWingData();
-    const meshVertices = data.mesh_vertices;
-    const meshIndices = data.mesh_indices;
-
     // Three.js setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x203040);
@@ -74,52 +71,38 @@ async function visualizeWing() {
     dir.position.set(2, 2, 1);
     scene.add(dir);
 
-    // Add wing surface mesh
-    let wingMesh = createWingSurfaceMesh(meshVertices, meshIndices);
-    wingMesh.castShadow = true;
-    wingMesh.receiveShadow = true;
-    scene.add(wingMesh);
+    // Add all geometries from backend
+    function previewGeometry(geometry) {
+        const meshVertices = geometry.mesh_vertices;
+        const meshIndices = geometry.mesh_indices;
+        const color = geometry.color || 0xb0c4de;
+        const position = geometry.position || [0, 0, 0];
+        const material = new THREE.MeshStandardMaterial({
+            color: color,
+            metalness: 0.9,
+            roughness: 0.25,
+            envMapIntensity: 1.0,
+            clearcoat: 0.6,
+            clearcoatRoughness: 0.1,
+            side: THREE.DoubleSide,
+        });
+        const mesh = createWingSurfaceMesh(meshVertices, meshIndices);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.position.set(position[0], position[1], position[2]);
+        scene.add(mesh);
+    }
+
+    if (data.geometries && Array.isArray(data.geometries)) {
+        for (const geometry of data.geometries) {
+            previewGeometry(geometry);
+        }
+    }
 
     // Axes helper
     const axes = new THREE.AxesHelper(2);
     scene.add(axes);
-
-    // Colored arrow axes and labeled sprites for X, Y, Z
-    (function addLabeledAxes() {
-        const axisLen = 2;
-        const headLength = 0.3;
-        const headWidth = 0.15;
-        const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), axisLen, 0xff0000, headLength, headWidth);
-        const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), axisLen, 0x00ff00, headLength, headWidth);
-        const arrowZ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), axisLen, 0x0000ff, headLength, headWidth);
-        scene.add(arrowX, arrowY, arrowZ);
-        function makeLabel(text, color) {
-            const size = 128;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, size, size);
-            ctx.font = `${Math.floor(size * 0.2)}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = color;
-            ctx.fillText(text, size / 2, size / 2);
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.needsUpdate = true;
-            const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, sizeAttenuation: false });
-            const sprite = new THREE.Sprite(mat);
-            sprite.scale.set(0.3, 0.3, 1);
-            return sprite;
-        }
-        const labelX = makeLabel('X', '#ff4444');
-        labelX.position.set(axisLen * 1.08, 0, 0);
-        const labelY = makeLabel('Y', '#44ff44');
-        labelY.position.set(0, axisLen * 1.08, 0);
-        const labelZ = makeLabel('Z', '#4444ff');
-        labelZ.position.set(0, 0, axisLen * 1.08);
-        scene.add(labelX, labelY, labelZ);
-    })();
+    // ...existing code for labeled axes...
 
     // // Grid helper
     // const grid = new THREE.GridHelper(10, 20, 0x222222, 0x111111);

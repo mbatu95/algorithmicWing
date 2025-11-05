@@ -49,18 +49,41 @@ async def generate_wing():
     mesh_vertices2[:,0] += offset_x
     mesh_vertices2 = mesh_vertices2.tolist()
 
-    mesh_vertices = mesh_vertices1 + mesh_vertices2
-    offset = len(mesh_vertices1)
-    mesh_indices2_offset = [[i0+offset, i1+offset, i2+offset] for [i0,i1,i2] in mesh_indices2]
-    mesh_indices = mesh_indices1 + mesh_indices2_offset
-
-    # Optional translation
+    # Optional translation for each wing
     if any([TRANSLATE_X, TRANSLATE_Y, TRANSLATE_Z]):
-        mesh_vertices = np.array(mesh_vertices)
-        mesh_vertices += np.array([TRANSLATE_X, TRANSLATE_Y, TRANSLATE_Z])
-        mesh_vertices = mesh_vertices.tolist()
+        mesh_vertices1 = np.array(mesh_vertices1)
+        mesh_vertices1 += np.array([TRANSLATE_X, TRANSLATE_Y, TRANSLATE_Z])
+        mesh_vertices1 = mesh_vertices1.tolist()
+        mesh_vertices2 = np.array(mesh_vertices2)
+        mesh_vertices2 += np.array([TRANSLATE_X, TRANSLATE_Y, TRANSLATE_Z])
+        mesh_vertices2 = mesh_vertices2.tolist()
 
+    # Return both wings as separate geometries
     return {
-        'mesh_vertices': mesh_vertices,
-        'mesh_indices': mesh_indices
+        'geometries': [
+            {
+                'mesh_vertices': mesh_vertices1,
+                'mesh_indices': mesh_indices1,
+                'type': 'wing',
+                'position': [0, 0, 0],
+                'color': '#b0c4de',
+                'material': 'metal'
+            },
+            {
+                'mesh_vertices': mesh_vertices2,
+                'mesh_indices': mesh_indices2,
+                'type': 'wing',
+                'position': [offset_x, 5, 5],
+                'color': '#ff4444',
+                'material': 'plastic'
+            },
+            {
+                'mesh_vertices': mesh_vertices2,
+                'mesh_indices': mesh_indices2,
+                'type': 'wing',
+                'position': [offset_x, -5, -5],
+                'color': '#ff4444',
+                'material': 'plastic'
+            }
+        ]
     }
