@@ -7,11 +7,7 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 
 async function fetchWingData(params) {
-    const response = await fetch('http://127.0.0.1:8000/generate-wing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
-    });
+    const response = await fetch('http://127.0.0.1:8000/generate-wing');
     return await response.json();
 }
 
@@ -42,15 +38,8 @@ function createWingSurfaceMesh(meshVertices, meshIndices) {
 
 // Main visualization function
 async function visualizeWing() {
-    // Example parameters (can be replaced with UI controls)
-    let params = {
-        naca: '2412',
-        chord: 1.5,
-        span: 5.0,
-        points: 100,
-        depth: 10
-    };
-    const data = await fetchWingData(params);
+    // Parameters are now set in Python backend, not here
+    const data = await fetchWingData();
     const meshVertices = data.mesh_vertices;
     const meshIndices = data.mesh_indices;
 
@@ -144,66 +133,6 @@ async function visualizeWing() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Advanced UI for parameters
-    const panel = document.createElement('div');
-    Object.assign(panel.style, {
-        position: 'absolute', top: '10px', left: '10px', padding: '8px', background: 'rgba(20,30,40,0.9)', color: '#fff', fontFamily: 'sans-serif', fontSize: '13px', borderRadius: '6px', zIndex: 9999, minWidth: '220px'
-    });
-    function makeRow(labelText, input) {
-        const row = document.createElement('div');
-        row.style.marginBottom = '6px';
-        const label = document.createElement('div');
-        label.textContent = labelText;
-        label.style.marginBottom = '3px';
-        row.appendChild(label);
-        row.appendChild(input);
-        return row;
-    }
-    const nacaInput = document.createElement('input');
-    nacaInput.type = 'number'; nacaInput.min = 0; nacaInput.max = 9999; nacaInput.value = parseInt(params.naca, 10); nacaInput.style.width = '100%';
-    const chordInput = document.createElement('input');
-    chordInput.type = 'number'; chordInput.step = '0.01'; chordInput.min = '0.01'; chordInput.value = params.chord; chordInput.style.width = '100%';
-    const spanInput = document.createElement('input');
-    spanInput.type = 'number'; spanInput.step = '0.01'; spanInput.min = '0.01'; spanInput.value = params.span || 5.0; spanInput.style.width = '100%';
-    const pointsInput = document.createElement('input');
-    pointsInput.type = 'number'; pointsInput.step = '1'; pointsInput.min = '10'; pointsInput.max = '2000'; pointsInput.value = params.points || 100; pointsInput.style.width = '100%';
-    const depthInput = document.createElement('input');
-    depthInput.type = 'number'; depthInput.step = '0.01'; depthInput.min = '0.001'; depthInput.value = params.depth || 10; depthInput.style.width = '100%';
-    const applyBtn = document.createElement('button');
-    applyBtn.textContent = 'Apply'; Object.assign(applyBtn.style, { width: '100%', padding: '6px 8px', marginTop: '6px', cursor: 'pointer', background: '#2b8cff', color: '#fff', border: 'none', borderRadius: '4px' });
-    panel.appendChild(makeRow('NACA (4-digit)', nacaInput));
-    panel.appendChild(makeRow('Chord', chordInput));
-    panel.appendChild(makeRow('Span', spanInput));
-    panel.appendChild(makeRow('Points', pointsInput));
-    panel.appendChild(makeRow('Depth', depthInput));
-    panel.appendChild(applyBtn);
-    document.body.appendChild(panel);
-
-    applyBtn.addEventListener('click', async () => {
-        let nacaVal = parseInt(nacaInput.value, 10) || 0;
-        nacaVal = Math.max(0, Math.min(9999, nacaVal));
-        const nacaStr = String(nacaVal).padStart(4, '0');
-        params.naca = nacaStr;
-        params.chord = Math.max(0.001, parseFloat(chordInput.value) || params.chord);
-        params.span = Math.max(0.01, parseFloat(spanInput.value) || params.span);
-        params.points = Math.max(10, Math.min(2000, parseInt(pointsInput.value, 10) || params.points));
-        params.depth = Math.max(0.001, parseFloat(depthInput.value) || params.depth);
-        // Fetch new geometry from backend
-        const newData = await fetchWingData(params);
-        const newMeshVertices = newData.mesh_vertices;
-        const newMeshIndices = newData.mesh_indices;
-        // Remove and dispose old mesh
-        if (wingMesh) {
-            scene.remove(wingMesh);
-            if (wingMesh.geometry) wingMesh.geometry.dispose();
-            if (wingMesh.material) wingMesh.material.dispose();
-        }
-        // Add new mesh
-        wingMesh = createWingSurfaceMesh(newMeshVertices, newMeshIndices);
-        wingMesh.castShadow = true;
-        wingMesh.receiveShadow = true;
-        scene.add(wingMesh);
-    });
 
     function animate() {
         requestAnimationFrame(animate);
