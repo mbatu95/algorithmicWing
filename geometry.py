@@ -22,5 +22,15 @@ class Geometry:
     def get_mesh(self):
         return self.mesh_vertices, self.mesh_indices
 
+    def to_dict(self):
+        return {
+            'type': self.type,
+            'mesh_vertices': self.mesh_vertices,
+            'mesh_indices': self.mesh_indices,
+            'position': self.position,
+            'color': self.color,
+            'material': self.material
+        }
+
     def __repr__(self):
         return f"Geometry(type={self.type}, position={self.position}, color={self.color}, material={self.material})"
