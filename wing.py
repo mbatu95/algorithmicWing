@@ -1,3 +1,4 @@
+from mesh import Mesh
 from typing import List, Tuple
 import numpy as np
 
@@ -65,12 +66,11 @@ class Wing:
         coords = [(xu[i], yu[i]) for i in range(self.points)] + [(xl[i], yl[i]) for i in reversed(range(self.points))]
         return coords
 
-    def extrude_mesh_with_indices(self):
+    def get_mesh(self):
         """
-        Extrudes the airfoil profile along the span to create a 3D mesh and returns vertices and triangle indices.
-        Returns (vertices, indices):
-            vertices: List of [x, y, z]
-            indices: List of [i0, i1, i2] triangle indices
+        Extrudes the airfoil profile along the span to create a 3D mesh and returns a Mesh object.
+        Returns:
+            Mesh: Mesh object containing vertices and indices
         """
         coords = np.array(self.profile_coords)
         slices = int(self.depth)
@@ -89,7 +89,7 @@ class Wing:
                 j2 = (j + 1) % N
                 indices.append([base + j, next_base + j, next_base + j2])
                 indices.append([base + j, next_base + j2, base + j2])
-        return vertices, indices
+        return Mesh(vertices, indices)
 
     def __repr__(self):
         return f"Wing(naca={self.naca}, chord={self.chord}, span={self.span}, points={self.points}, depth={self.depth})"
