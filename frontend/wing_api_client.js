@@ -1,0 +1,217 @@
+// wing_api_client.js
+// Fetches wing geometry from FastAPI backend and visualizes with Three.js
+
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+
+async function fetchWingData(params) {
+    const response = await fetch('http://127.0.0.1:8000/generate-wing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+    });
+    return await response.json();
+}
+
+
+
+function createWingSurfaceMesh(meshVertices, meshIndices) {
+    // meshVertices: Array of [x, y, z] points
+    // meshIndices: Array of [i0, i1, i2] triangle indices
+    const geometry = new THREE.BufferGeometry();
+    const vertices = new Float32Array(meshVertices.flat());
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    // Flatten indices for Three.js
+    const flatIndices = new Uint32Array(meshIndices.flat());
+    geometry.setIndex(new THREE.BufferAttribute(flatIndices, 1));
+    geometry.computeVertexNormals();
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xb0c4de,
+        metalness: 0.9,
+        roughness: 0.25,
+        envMapIntensity: 1.0,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.1,
+        side: THREE.DoubleSide,
+    });
+    return new THREE.Mesh(geometry, material);
+}
+
+
+// Main visualization function
+async function visualizeWing() {
+    // Example parameters (can be replaced with UI controls)
+    let params = {
+        naca: '2412',
+        chord: 1.5,
+        span: 5.0,
+        points: 100,
+        depth: 10
+    };
+    const data = await fetchWingData(params);
+    const meshVertices = data.mesh_vertices;
+    const meshIndices = data.mesh_indices;
+
+    // Three.js setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x203040);
+    const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.001, 100);
+    camera.position.set(0.5, 0.2, 30);
+    camera.lookAt(0, 0, 0);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.style.margin = '0';
+    document.body.appendChild(renderer.domElement);
+
+    // HDR environment lighting
+    const loader = new RGBELoader();
+    loader.load('assets/plains_sunset_4k.hdr', (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.environment = texture;
+        scene.background = texture;
+    });
+
+    // controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0, 0);
+
+    // lights
+    const hemi = new THREE.HemisphereLight(0xbbd6ff, 0x202025, 1.4);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffffff, 3);
+    dir.position.set(2, 2, 1);
+    scene.add(dir);
+
+    // Add wing surface mesh
+    let wingMesh = createWingSurfaceMesh(meshVertices, meshIndices);
+    wingMesh.castShadow = true;
+    wingMesh.receiveShadow = true;
+    scene.add(wingMesh);
+
+    // Axes helper
+    const axes = new THREE.AxesHelper(2);
+    scene.add(axes);
+
+    // Colored arrow axes and labeled sprites for X, Y, Z
+    (function addLabeledAxes() {
+        const axisLen = 2;
+        const headLength = 0.3;
+        const headWidth = 0.15;
+        const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), axisLen, 0xff0000, headLength, headWidth);
+        const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), axisLen, 0x00ff00, headLength, headWidth);
+        const arrowZ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), axisLen, 0x0000ff, headLength, headWidth);
+        scene.add(arrowX, arrowY, arrowZ);
+        function makeLabel(text, color) {
+            const size = 128;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, size, size);
+            ctx.font = `${Math.floor(size * 0.2)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = color;
+            ctx.fillText(text, size / 2, size / 2);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, sizeAttenuation: false });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(0.3, 0.3, 1);
+            return sprite;
+        }
+        const labelX = makeLabel('X', '#ff4444');
+        labelX.position.set(axisLen * 1.08, 0, 0);
+        const labelY = makeLabel('Y', '#44ff44');
+        labelY.position.set(0, axisLen * 1.08, 0);
+        const labelZ = makeLabel('Z', '#4444ff');
+        labelZ.position.set(0, 0, axisLen * 1.08);
+        scene.add(labelX, labelY, labelZ);
+    })();
+
+    // // Grid helper
+    // const grid = new THREE.GridHelper(10, 20, 0x222222, 0x111111);
+    // grid.rotation.x = Math.PI / 2;
+    // scene.add(grid);
+
+    // Responsive resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Advanced UI for parameters
+    const panel = document.createElement('div');
+    Object.assign(panel.style, {
+        position: 'absolute', top: '10px', left: '10px', padding: '8px', background: 'rgba(20,30,40,0.9)', color: '#fff', fontFamily: 'sans-serif', fontSize: '13px', borderRadius: '6px', zIndex: 9999, minWidth: '220px'
+    });
+    function makeRow(labelText, input) {
+        const row = document.createElement('div');
+        row.style.marginBottom = '6px';
+        const label = document.createElement('div');
+        label.textContent = labelText;
+        label.style.marginBottom = '3px';
+        row.appendChild(label);
+        row.appendChild(input);
+        return row;
+    }
+    const nacaInput = document.createElement('input');
+    nacaInput.type = 'number'; nacaInput.min = 0; nacaInput.max = 9999; nacaInput.value = parseInt(params.naca, 10); nacaInput.style.width = '100%';
+    const chordInput = document.createElement('input');
+    chordInput.type = 'number'; chordInput.step = '0.01'; chordInput.min = '0.01'; chordInput.value = params.chord; chordInput.style.width = '100%';
+    const spanInput = document.createElement('input');
+    spanInput.type = 'number'; spanInput.step = '0.01'; spanInput.min = '0.01'; spanInput.value = params.span || 5.0; spanInput.style.width = '100%';
+    const pointsInput = document.createElement('input');
+    pointsInput.type = 'number'; pointsInput.step = '1'; pointsInput.min = '10'; pointsInput.max = '2000'; pointsInput.value = params.points || 100; pointsInput.style.width = '100%';
+    const depthInput = document.createElement('input');
+    depthInput.type = 'number'; depthInput.step = '0.01'; depthInput.min = '0.001'; depthInput.value = params.depth || 10; depthInput.style.width = '100%';
+    const applyBtn = document.createElement('button');
+    applyBtn.textContent = 'Apply'; Object.assign(applyBtn.style, { width: '100%', padding: '6px 8px', marginTop: '6px', cursor: 'pointer', background: '#2b8cff', color: '#fff', border: 'none', borderRadius: '4px' });
+    panel.appendChild(makeRow('NACA (4-digit)', nacaInput));
+    panel.appendChild(makeRow('Chord', chordInput));
+    panel.appendChild(makeRow('Span', spanInput));
+    panel.appendChild(makeRow('Points', pointsInput));
+    panel.appendChild(makeRow('Depth', depthInput));
+    panel.appendChild(applyBtn);
+    document.body.appendChild(panel);
+
+    applyBtn.addEventListener('click', async () => {
+        let nacaVal = parseInt(nacaInput.value, 10) || 0;
+        nacaVal = Math.max(0, Math.min(9999, nacaVal));
+        const nacaStr = String(nacaVal).padStart(4, '0');
+        params.naca = nacaStr;
+        params.chord = Math.max(0.001, parseFloat(chordInput.value) || params.chord);
+        params.span = Math.max(0.01, parseFloat(spanInput.value) || params.span);
+        params.points = Math.max(10, Math.min(2000, parseInt(pointsInput.value, 10) || params.points));
+        params.depth = Math.max(0.001, parseFloat(depthInput.value) || params.depth);
+        // Fetch new geometry from backend
+        const newData = await fetchWingData(params);
+        const newMeshVertices = newData.mesh_vertices;
+        const newMeshIndices = newData.mesh_indices;
+        // Remove and dispose old mesh
+        if (wingMesh) {
+            scene.remove(wingMesh);
+            if (wingMesh.geometry) wingMesh.geometry.dispose();
+            if (wingMesh.material) wingMesh.material.dispose();
+        }
+        // Add new mesh
+        wingMesh = createWingSurfaceMesh(newMeshVertices, newMeshIndices);
+        wingMesh.castShadow = true;
+        wingMesh.receiveShadow = true;
+        scene.add(wingMesh);
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+}
+
+// Run visualization on page load
+window.addEventListener('DOMContentLoaded', visualizeWing);
