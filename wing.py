@@ -94,11 +94,3 @@ class Wing:
     def __repr__(self):
         return f"Wing(naca={self.naca}, chord={self.chord}, span={self.span}, points={self.points}, depth={self.depth})"
 
-# Example usage:
-if __name__ == "__main__":
-    wing = Wing(naca='2412', chord=1.5, span=5.0)
-    print(wing)
-    print("Profile points:", wing.generate_airfoil_profile()[:5])
-    vertices, indices = wing.extrude_mesh_with_indices()
-    print("Mesh vertices:", vertices[:5])
-    print("Mesh indices:", indices[:5])
