@@ -1,8 +1,10 @@
+# Utility function to rotate geometry mesh vertices around x, y, z axes (in radians)
+from geometry_utils import rotate_geometry, translate_geometry
 from fastapi import FastAPI
 from wing import Wing
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
-from geometry import Geometry, Mesh
+from geometry import Geometry
 
 app = FastAPI()
 
@@ -20,9 +22,6 @@ CHORD = 1.4
 SPAN = 5.0
 POINTS = 100
 DEPTH = 10
-TRANSLATE_X = 0.0
-TRANSLATE_Y = 0.0
-TRANSLATE_Z = 0.0
 
 @app.get('/generate-wing')
 async def shaper():
@@ -72,6 +71,11 @@ async def shaper():
         color='#ff4444',
         material='plastic'
     )
+        
+    rotate_geometry(geometry2, angles=(0, 0, np.radians(30)))
+    translate_geometry(geometry2,(0, -10, 1 ))
+
+    
 
 
     geometries = [geometry1, geometry2, geometry3]
