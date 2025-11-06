@@ -20,10 +20,10 @@ app.add_middleware(
 )
 
 # Hardcoded parameters
-NACA = '2412'
-CHORD = 1.4
-SPAN = 5.0
-POINTS = 100
+NACA = '4656'
+CHORD = 3
+SPAN = 7.0
+POINTS = 300
 DEPTH = 10
 
 @app.get('/generate-wing')
@@ -42,7 +42,7 @@ async def shaper():
     offset_x = CHORD + 1.0
     wing2 = Wing(
         naca=NACA,
-        chord=4,
+        chord=CHORD,
         span=SPAN,
         points=POINTS,
         depth=DEPTH
@@ -51,44 +51,25 @@ async def shaper():
 
 
     # First geometry
-    geometry1 = Geometry(
+    geo_wing1 = Geometry(
         type_='wing',
         mesh=mesh1,
-        position=[0, 0, 0],
+        position=[9, 0, 6],
         color='#b0c4de',
         material='metal'
     )
     # Second geometry
-    geometry2 = Geometry(
+    geo_wing2 = Geometry(
         type_='wing',
         mesh=mesh2,
-        position=[offset_x, 5, 5],
+        position=[offset_x+13,0 ,6],
         color='#ff4444',
         material='plastic'
     )
-    # Third geometry (example, same mesh as geometry2, different position)
-    geometry3 = Geometry(
-        type_='wing',
-        mesh=mesh2,
-        position=[offset_x, -5, -5],
-        color='#ff4444',
-        material='plastic'
-    )
-        
-    rotate_geometry(geometry2, angles=(0, 0, np.radians(30)))
-    translate_geometry(geometry2,(0, -10, 1 ))
 
-    meshcube = CubeMesh(size=3.0)
-    geometry4 = Geometry(
-        type_='cube',
-        mesh=meshcube,
-        position=[-5, 0, 0],
-        color='#00ff00',
-        material='plastic'
-    )
 
     meshfuselage = Fuselage()
-    geometry5 = Geometry(
+    geo_fuselage = Geometry(
         type_='fuselage',
         mesh=meshfuselage,
         position=[10, 0, 0],
@@ -97,18 +78,20 @@ async def shaper():
     )
     
     meshwindow = Window()
-    geometry6 = Geometry(
+    geo_window = Geometry(
         type_='window',
         mesh=meshwindow,
-        position=[12, 0, 0],
+        position=[11.2, 0, 4],
         color='#ffff00',
         material='plastic'
     )
     
-    scale_geometry(geometry6, scale=4.0)
-    rotate_geometry(geometry6, angles=(0, np.radians(90), 0))
+    scale_geometry(geo_window, scale=2.0)
+    rotate_geometry(geo_wing1, angles=(0, np.radians(-90), 0))
+    rotate_geometry(geo_wing2, angles=(0, np.radians(-90), 0))
+    rotate_geometry(geo_window, angles=(0, np.radians(-90), 0))
 
-    geometries = [geometry1, geometry2, geometry3, geometry4, geometry5, geometry6]
+    geometries = [geo_wing1, geo_wing2, geo_fuselage, geo_window]
 
     return {
         'geometries': [g.to_dict() for g in geometries]
