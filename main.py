@@ -1,5 +1,5 @@
 # Utility function to rotate geometry mesh vertices around x, y, z axes (in radians)
-from geometry_utils import rotate_geometry, translate_geometry
+from geometry_utils import rotate_geometry, translate_geometry, scale_geometry
 from fastapi import FastAPI
 from wing import Wing
 import numpy as np
@@ -104,6 +104,8 @@ async def shaper():
         color='#ffff00',
         material='plastic'
     )
+    
+    scale_geometry(geometry6, scale=4.0)
 
     geometries = [geometry1, geometry2, geometry3, geometry4, geometry5, geometry6]
 

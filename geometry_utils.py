@@ -1,3 +1,20 @@
+def scale_geometry(geometry, scale):
+    """
+    Scales the mesh vertices of a Geometry object by the given scale factor or vector.
+    Only affects the input geometry, not other geometries sharing the same mesh.
+    scale: float or tuple/list of (sx, sy, sz)
+    """
+    from copy import deepcopy
+    import numpy as np
+    mesh_copy = deepcopy(geometry.mesh)
+    verts = np.array(mesh_copy.vertices)
+    if isinstance(scale, (int, float)):
+        scale_vec = np.array([scale, scale, scale])
+    else:
+        scale_vec = np.array(scale)
+    verts_scaled = verts * scale_vec
+    mesh_copy.vertices = verts_scaled.tolist()
+    geometry.mesh = mesh_copy
 def translate_geometry(geometry, translation):
     """
     Translates the mesh vertices of a Geometry object by the given (x, y, z) vector.
