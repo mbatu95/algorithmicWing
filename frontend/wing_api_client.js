@@ -43,7 +43,7 @@ async function visualizeWing() {
     // Three.js setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x203040);
-    const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.001, 100);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.001, 100);
     camera.position.set(0.5, 0.2, 30);
     camera.lookAt(0, 0, 0);
     const renderer = new THREE.WebGLRenderer({ antialias: true });

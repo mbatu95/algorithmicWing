@@ -5,6 +5,8 @@ from wing import Wing
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 from geometry import Geometry
+from cube_mesh import CubeMesh
+from fuselage import Fuselage
 
 app = FastAPI()
 
@@ -75,10 +77,24 @@ async def shaper():
     rotate_geometry(geometry2, angles=(0, 0, np.radians(30)))
     translate_geometry(geometry2,(0, -10, 1 ))
 
-    
+    meshcube = CubeMesh(size=3.0)
+    geometry4 = Geometry(
+        type_='cube',
+        mesh=meshcube,
+        position=[-5, 0, 0],
+        color='#00ff00',
+        material='plastic'
+    )
 
-
-    geometries = [geometry1, geometry2, geometry3]
+    meshfuselage = Fuselage()
+    geometry5 = Geometry(
+        type_='fuselage',
+        mesh=meshfuselage,
+        position=[10, 0, 0],
+        color='#0000ff',
+        material='plastic'
+    )
+    geometries = [geometry1, geometry2, geometry3, geometry4, geometry5]
 
     return {
         'geometries': [g.to_dict() for g in geometries]
