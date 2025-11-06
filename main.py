@@ -106,6 +106,7 @@ async def shaper():
     )
     
     scale_geometry(geometry6, scale=4.0)
+    rotate_geometry(geometry6, angles=(0, np.radians(90), 0))
 
     geometries = [geometry1, geometry2, geometry3, geometry4, geometry5, geometry6]
 

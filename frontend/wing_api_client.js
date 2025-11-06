@@ -101,6 +101,38 @@ async function visualizeWing() {
 
     // Axes helper
     const axes = new THREE.AxesHelper(2);
+
+    function makeAxisLabel(text, color) {
+        const size = 128;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, size, size);
+        ctx.font = 'bold 96px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // outline for contrast
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+        ctx.strokeText(text, size / 2, size / 2 + 6);
+        ctx.fillStyle = color || '#ffffff';
+        ctx.fillText(text, size / 2, size / 2 + 6);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.needsUpdate = true;
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(0.6, 0.6, 1);
+        return sprite;
+    }
+
+    const labelX = makeAxisLabel('X', '#ff0000');
+    labelX.position.set(2.2, 0, 0);
+    const labelY = makeAxisLabel('Y', '#00ff00');
+    labelY.position.set(0, 2.2, 0);
+    const labelZ = makeAxisLabel('Z', '#0000ff');
+    labelZ.position.set(0, 0, 2.2);
+
+    scene.add(labelX, labelY, labelZ);
     scene.add(axes);
     // ...existing code for labeled axes...
 
