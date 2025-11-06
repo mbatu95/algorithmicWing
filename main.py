@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from geometry import Geometry
 from cube_mesh import CubeMesh
 from fuselage import Fuselage
+from window import Window
 
 app = FastAPI()
 
@@ -94,7 +95,17 @@ async def shaper():
         color='#0000ff',
         material='plastic'
     )
-    geometries = [geometry1, geometry2, geometry3, geometry4, geometry5]
+    
+    meshwindow = Window()
+    geometry6 = Geometry(
+        type_='window',
+        mesh=meshwindow,
+        position=[12, 0, 0],
+        color='#ffff00',
+        material='plastic'
+    )
+
+    geometries = [geometry1, geometry2, geometry3, geometry4, geometry5, geometry6]
 
     return {
         'geometries': [g.to_dict() for g in geometries]
