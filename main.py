@@ -28,41 +28,56 @@ DEPTH = 10
 
 @app.get('/generate-wing')
 async def shaper():
-    # First wing
+    # Right wing (wing1) - will be rotated 180°, so use mirror_mode=True
     wing1 = Wing(
         naca=NACA,
         chord=CHORD,
         span=SPAN,
         points=POINTS,
-        depth=DEPTH
+        depth=DEPTH,
+        mirror_mode=True  # Mirrors the shift during mesh generation
+    )
+    
+    wing1.set_morph(
+        start_percent=0.6,
+        thickness_factor=0.3,
+        shift_amount=-1,              # Same value for both wings
+        dihedral_angle=np.radians(25)
     )
     mesh1 = wing1.get_mesh()
 
-    # Second wing, shifted in X
-    offset_x = CHORD + 1.0
+    # Left wing (wing2) - stays in original orientation, so mirror_mode=False
     wing2 = Wing(
         naca=NACA,
         chord=CHORD,
         span=SPAN,
         points=POINTS,
-        depth=DEPTH
+        depth=DEPTH,
+        mirror_mode=False  # Normal shift direction
+    )
+    
+    wing2.set_morph(
+        start_percent=0.6,
+        thickness_factor=0.3,
+        shift_amount=1,              # Same value for both wings
+        dihedral_angle=np.radians(-25)
     )
     mesh2 = wing2.get_mesh()
 
 
-    # First geometry
+    # Right wing geometry
     geo_wing1 = Geometry(
         type_='wing',
         mesh=mesh1,
-        position=[9, 0, 6],
+        position=[11, 0, 6],
         color='#b0c4de',
         material='metal'
     )
-    # Second geometry
+    # Left wing geometry
     geo_wing2 = Geometry(
         type_='wing',
         mesh=mesh2,
-        position=[offset_x+13,0 ,6],
+        position=[9, 0, 6],
         color='#ff4444',
         material='plastic'
     )
@@ -88,8 +103,16 @@ async def shaper():
     
     scale_geometry(geo_window, scale=2.0)
     rotate_geometry(geo_wing1, angles=(0, np.radians(-90), 0))
+    rotate_geometry(geo_wing1, angles=(0, np.radians(180), 0))
+    rotate_geometry(geo_wing1, angles=(np.radians(180), 0, 0))
+
     rotate_geometry(geo_wing2, angles=(0, np.radians(-90), 0))
+    # rotate_geometry(geo_wing2, angles=(0, 0, np.radians(180)))
+    # rotate_geometry(geo_wing2, angles=( np.radians(180), 0,0))
+
     rotate_geometry(geo_window, angles=(0, np.radians(-90), 0))
+    
+    
 
     geometries = [geo_wing1, geo_wing2, geo_fuselage, geo_window]
 
