@@ -20,7 +20,7 @@ class Window:
         screws: number of mounting screws (optional, for realism)
     """
     def __init__(self, width=0.38, height=0.54, thickness=0.045, frame_width=0.055, glass_inset=0.01, frame_bevel=0.012, segments=40, screws=8):
-        self.width = width
+        self.width = width 
         self.height = height
         self.thickness = thickness
         self.frame_width = frame_width

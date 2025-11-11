@@ -5,7 +5,6 @@ from wing import Wing
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 from geometry import Geometry
-from cube_mesh import CubeMesh
 from fuselage import Fuselage
 from window import Window
 
@@ -21,8 +20,8 @@ app.add_middleware(
 
 # Hardcoded parameters
 NACA = '4656'
-CHORD = 3
-SPAN = 7.0
+CHORD = 4
+SPAN = 12.0
 POINTS = 300
 DEPTH = 10
 
@@ -35,14 +34,16 @@ async def shaper():
         span=SPAN,
         points=POINTS,
         depth=DEPTH,
-        mirror_mode=True  # Mirrors the shift during mesh generation
+        mirror_mode=True,  # Mirrors the shift during mesh generation
+        taper_ratio=0.4
     )
     
     wing1.set_morph(
         start_percent=0.6,
         thickness_factor=0.3,
-        shift_amount=-1,              # Same value for both wings
+        shift_amount=-1.3,              # Same value for both wings
         dihedral_angle=np.radians(25)
+        
     )
     mesh1 = wing1.get_mesh()
 
@@ -53,13 +54,14 @@ async def shaper():
         span=SPAN,
         points=POINTS,
         depth=DEPTH,
-        mirror_mode=False  # Normal shift direction
+        mirror_mode=False,  # Normal shift direction
+        taper_ratio=0.4
     )
     
     wing2.set_morph(
         start_percent=0.6,
         thickness_factor=0.3,
-        shift_amount=1,              # Same value for both wings
+        shift_amount=1.3,              # Same value for both wings
         dihedral_angle=np.radians(-25)
     )
     mesh2 = wing2.get_mesh()
@@ -77,7 +79,7 @@ async def shaper():
     geo_wing2 = Geometry(
         type_='wing',
         mesh=mesh2,
-        position=[9, 0, 6],
+        position=[8.8, 0, 6], # this asyymetric position is related to hardcoded positoning.
         color='#ff4444',
         material='plastic'
     )
@@ -87,7 +89,7 @@ async def shaper():
     geo_fuselage = Geometry(
         type_='fuselage',
         mesh=meshfuselage,
-        position=[10, 0, 0],
+        position=[10, 0, 0], ## hardkodla pozisyon atamak yerine node assign eder assemble etme ozelligi getirecegiz ilerde.
         color='#0000ff',
         material='plastic'
     )
@@ -119,3 +121,5 @@ async def shaper():
     return {
         'geometries': [g.to_dict() for g in geometries]
     }
+    
+    #buraya en son gelecez

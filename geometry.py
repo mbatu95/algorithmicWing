@@ -1,17 +1,3 @@
-# Mesh class to hold mesh data
-class Mesh:
-    def __init__(self, vertices, indices):
-        self.vertices = vertices  # List of [x, y, z]
-        self.indices = indices    # List of [i0, i1, i2]
-
-    def to_dict(self):
-        return {
-            'mesh_vertices': self.vertices,
-            'mesh_indices': self.indices
-        }
-
-# Mesh class to hold mesh data
-# Generic geometry object for wings, fuselage, etc.
 class Geometry:
     def __init__(self, type_, mesh, position=None, color=None, material=None):
         self.type = type_  # e.g. 'wing', 'fuselage', etc.
@@ -44,3 +30,5 @@ class Geometry:
 
     def __repr__(self):
         return f"Geometry(type={self.type}, position={self.position}, color={self.color}, material={self.material}, mesh={self.mesh})"
+
+
