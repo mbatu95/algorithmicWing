@@ -1,0 +1,18 @@
+{
+  "name": "algorithmic-wing-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Algorithmic Wing visualization",
+  "main": "index.html",
+  "scripts": {
+    "serve": "python -m http.server 3000",
+    "dev": "python -m http.server 3000",
+    "install-deps": "echo 'Dependencies are loaded via CDN - no installation needed'"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {},
+  "keywords": ["wing", "visualization", "three.js", "algorithmic"],
+  "author": "",
+  "license": "MIT"
+}
