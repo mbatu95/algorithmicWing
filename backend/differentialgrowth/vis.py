@@ -32,9 +32,9 @@ def plot_vectors(particles):
 if __name__ == "__main__":
     # Example usage
 
-    particles = create_particle_ring(center_particle={'x': 0, 'y': 0}, num_particles=8, radius=15)
-    insert_particle(particles, max_distance=7.0)
-    print(update_velocity(particles, repulsion_distance=20))
+    particles = create_particle_ring(center_particle={'x': 0, 'y': 0}, num_particles=4, radius=40)
+    insert_particle(particles, max_distance=15)
+    update_velocity(particles, repulsion_distance=75)
     
-    update_position(particles, dt=1000)
+    update_position(particles, dt=20)
     plot_vectors(particles)

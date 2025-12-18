@@ -24,25 +24,35 @@ def create_particle_ring(center_particle:dict[str, float], num_particles:int=20,
 
 
 
-def insert_particle(particles: list[Particle], max_distance: float):
+def insert_particle(particles: list[Particle], max_distance: float, max_particles: int = 1000):
     """
-    Insert particles between all consecutive pairs including the last-to-first segment
-    until all gaps are below max_distance.
+    Insert particles between consecutive pairs if distance exceeds max_distance.
+    Only does ONE pass per call to prevent computational explosion.
+    
+    Args:
+        particles: List of particles
+        max_distance: Maximum allowed distance between neighbors
+        max_particles: Maximum number of particles (prevents infinite growth)
     """
-    changed = True
-    while changed:
-        changed = False
-        n = len(particles)
-        for i in range(n):
-            p1 = particles[i]
-            p2 = particles[(i + 1) % n]  # wrap-around
-            vec = p2.position - p1.position
-            distance = np.linalg.norm(vec)
-            if distance > max_distance:
-                mid_position = p1.position + vec / 2
-                particles.insert(i + 1, Particle(position=mid_position))
-                changed = True
-                break  # restart the loop because list changed
+    if len(particles) >= max_particles:
+        return
+    
+    # Single pass - only insert once per call
+    i = 0
+    n = len(particles)
+    while i < n and len(particles) < max_particles:
+        p1 = particles[i]
+        p2 = particles[(i + 1) % len(particles)]
+        vec = p2.position - p1.position
+        distance = np.linalg.norm(vec)
+        
+        if distance > max_distance:
+            mid_position = p1.position + vec / 2
+            particles.insert(i + 1, Particle(position=mid_position))
+            i += 2  # skip the newly inserted particle
+            n += 1
+        else:
+            i += 1
 
  
 def update(particles: list[Particle], dt: float=1.0):
@@ -63,41 +73,69 @@ def update(particles: list[Particle], dt: float=1.0):
                 break  # restart the loop because list changed
 
 
-def update_velocity(particles: list[Particle], repulsion_distance: float = 1.0) -> None:
+def update_velocity(particles: list[Particle], repulsion_distance: float = 1.0, damping: float = 0.85) -> None:
     """
-    Update the velocity of each particle based on repulsion from other particles.
-
+    Update velocity based on:
+    1. Repulsion from nearby particles
+    2. Attraction to neighbors (spring force)
+    3. Velocity damping (prevents explosion)
+    
     Args:
         particles: List of Particle objects
-        repulsion_distance: distance below which particles repel each other
+        repulsion_distance: Distance below which particles repel
+        damping: Velocity damping factor (0-1, closer to 1 = less damping)
     """
-    for p in particles:
-        force = np.zeros(2)  # total force on this particle
-
+    n = len(particles)
+    
+    for i, p in enumerate(particles):
+        force = np.zeros(2)
+        
+        # Get neighbors (only adjacent particles for O(n) instead of O(n²))
+        prev_particle = particles[(i - 1) % n]
+        next_particle = particles[(i + 1) % n]
+        neighbors = [prev_particle, next_particle]
+        
+        # Spring force to neighbors (keeps structure connected)
+        for neighbor in neighbors:
+            diff = neighbor.position - p.position
+            distance = np.linalg.norm(diff)
+            if distance > 0:
+                direction = diff / distance
+                # Spring force: pulls together if too far
+                spring_force = (distance - repulsion_distance * 0.5) * 0.1
+                force += direction * spring_force
+        
+        # Repulsion from ALL nearby particles (still needed for organic shape)
         for other in particles:
             if other is p:
-                continue  # skip self
-
-            diff = other.position - p.position  # vector from p to other
+                continue
+            
+            diff = p.position - other.position  # REVERSED: push AWAY
             distance = np.linalg.norm(diff)
-
-            if distance < repulsion_distance and distance > 0:  # avoid division by zero
-                direction = diff / distance  # normalize
-                magnitude = -1 / (distance ** 2)  # repulsion inversely proportional to distance^2
-                force += direction * magnitude  # add repulsive force
-
-        # Update velocity (v = v + a), here acceleration = total force
-        p.velocity += force
-        print(p.velocity)
+            
+            if distance < repulsion_distance and distance > 0:
+                direction = diff / distance
+                # Stronger repulsion when closer
+                magnitude = (repulsion_distance - distance) / repulsion_distance
+                force += direction * magnitude * 0.5
+        
+        # Update velocity with damping
+        p.velocity = p.velocity * damping + force
         
 
-def update_position(particles: list[Particle], dt: float = 1.0) -> None:
+def update_position(particles: list[Particle], dt: float = 0.5) -> None:
     """
     Update the position of each particle by adding its velocity.
 
     Args:
         particles: list of Particle objects
-        dt: time step multiplier (default 1.0)
+        dt: time step multiplier (smaller = more stable)
     """
     for p in particles:
         p.position += p.velocity * dt
+        
+        # Optional: Cap velocity to prevent explosions
+        speed = np.linalg.norm(p.velocity)
+        max_speed = 10.0
+        if speed > max_speed:
+            p.velocity = (p.velocity / speed) * max_speed
