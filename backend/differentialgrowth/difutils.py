@@ -21,3 +21,25 @@ def create_particle_ring(center_particle:dict[str, float], num_particles:int=20,
     particles = [Particle(position=np.array([x, y])) for x, y in zip(x_coords, y_coords)]
     
     return particles
+
+
+
+def insert_particle(particles: list[Particle], max_distance: float):
+    """
+    Insert particles between all consecutive pairs including the last-to-first segment
+    until all gaps are below max_distance.
+    """
+    changed = True
+    while changed:
+        changed = False
+        n = len(particles)
+        for i in range(n):
+            p1 = particles[i]
+            p2 = particles[(i + 1) % n]  # wrap-around
+            vec = p2.position - p1.position
+            distance = np.linalg.norm(vec)
+            if distance > max_distance:
+                mid_position = p1.position + vec / 2
+                particles.insert(i + 1, Particle(position=mid_position))
+                changed = True
+                break  # restart the loop because list changed

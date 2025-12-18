@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from difutils import create_particle_ring
+from difutils import create_particle_ring, insert_particle
 from particle import Particle
 import numpy as np
 
@@ -34,6 +34,7 @@ def plot_vectors(particles):
 if __name__ == "__main__":
     # Example usage
 
-    particles = create_particle_ring(center_particle={'x': 0, 'y': 0}, num_particles=500, radius=5.0)
+    particles = create_particle_ring(center_particle={'x': 0, 'y': 0}, num_particles=4, radius=5.0)
     print(f"Created {len(particles)} particles in a ring.")
+    insert_particle(particles, max_distance=3.0)
     plot_vectors(particles)
