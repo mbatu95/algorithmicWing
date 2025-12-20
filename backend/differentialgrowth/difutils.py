@@ -73,57 +73,40 @@ def update(particles: list[Particle], dt: float=1.0):
                 break  # restart the loop because list changed
 
 
-def update_velocity(particles: list[Particle], repulsion_distance: float = 1.0, damping: float = 0.85) -> None:
+def update_velocity(particles: list[Particle], repulsion_distance: float = 1.0, damping: float = 0.7) -> None:
     """
-    Update velocity based on:
-    1. Repulsion from nearby particles
-    2. Attraction to neighbors (spring force)
-    3. Velocity damping (prevents explosion)
+    Update velocity based on repulsion from all nearby particles.
+    Uses simple repulsion-only physics for stable growth.
     
     Args:
         particles: List of Particle objects
         repulsion_distance: Distance below which particles repel
-        damping: Velocity damping factor (0-1, closer to 1 = less damping)
+        damping: Velocity damping factor (0-1, lower = more damping)
     """
     n = len(particles)
     
     for i, p in enumerate(particles):
         force = np.zeros(2)
         
-        # Get neighbors (only adjacent particles for O(n) instead of O(n²))
-        prev_particle = particles[(i - 1) % n]
-        next_particle = particles[(i + 1) % n]
-        neighbors = [prev_particle, next_particle]
-        
-        # Spring force to neighbors (keeps structure connected)
-        for neighbor in neighbors:
-            diff = neighbor.position - p.position
-            distance = np.linalg.norm(diff)
-            if distance > 0:
-                direction = diff / distance
-                # Spring force: pulls together if too far
-                spring_force = (distance - repulsion_distance * 0.5) * 0.1
-                force += direction * spring_force
-        
-        # Repulsion from ALL nearby particles (still needed for organic shape)
-        for other in particles:
-            if other is p:
+        # Repulsion from ALL particles (creates organic spreading)
+        for j, other in enumerate(particles):
+            if i == j:
                 continue
             
-            diff = p.position - other.position  # REVERSED: push AWAY
+            diff = p.position - other.position  # Vector pointing away from other
             distance = np.linalg.norm(diff)
             
-            if distance < repulsion_distance and distance > 0:
+            if distance < repulsion_distance and distance > 0.01:  # Avoid division by zero
                 direction = diff / distance
-                # Stronger repulsion when closer
-                magnitude = (repulsion_distance - distance) / repulsion_distance
-                force += direction * magnitude * 0.5
+                # Linear repulsion: stronger when closer
+                strength = (repulsion_distance - distance) / repulsion_distance
+                force += direction * strength
         
-        # Update velocity with damping
-        p.velocity = p.velocity * damping + force
+        # Apply force with strong damping
+        p.velocity = p.velocity * damping + force * 0.3  # 0.3 = force multiplier
         
 
-def update_position(particles: list[Particle], dt: float = 0.5) -> None:
+def update_position(particles: list[Particle], dt: float = 1.0) -> None:
     """
     Update the position of each particle by adding its velocity.
 
@@ -132,10 +115,10 @@ def update_position(particles: list[Particle], dt: float = 0.5) -> None:
         dt: time step multiplier (smaller = more stable)
     """
     for p in particles:
-        p.position += p.velocity * dt
-        
-        # Optional: Cap velocity to prevent explosions
+        # Cap velocity to prevent explosions
         speed = np.linalg.norm(p.velocity)
-        max_speed = 10.0
+        max_speed = 5.0  # Lower max speed for stability
         if speed > max_speed:
             p.velocity = (p.velocity / speed) * max_speed
+        
+        p.position += p.velocity * dt
