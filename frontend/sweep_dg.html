@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Differential Growth Sweep</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #canvas {
+            display: block;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+        }
+
+        h3 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px 0;
+            font-size: 12px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        #info {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        .value {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <h3>🌿 Differential Growth Sweep</h3>
+
+        <label>DG Iterations: <span class="value" id="iterVal">50</span></label>
+        <input type="range" id="iterations" min="10" max="100" value="50" step="5">
+
+        <label>DG Radius: <span class="value" id="radiusVal">0.3</span></label>
+        <input type="range" id="radius" min="0.1" max="0.8" value="0.3" step="0.05">
+
+        <label>Path Points: <span class="value" id="pathVal">50</span></label>
+        <input type="range" id="pathPoints" min="20" max="100" value="50" step="5">
+
+        <button onclick="generate()">🚀 Generate</button>
+        <div id="info"></div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(8, 8, 8);
+
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 15, 10);
+        scene.add(dirLight);
+
+        const rimLight = new THREE.DirectionalLight(0x4CAF50, 0.3);
+        rimLight.position.set(-5, 5, -5);
+        scene.add(rimLight);
+
+        // Grid & axes
+        scene.add(new THREE.GridHelper(20, 20, 0x333333, 0x111111));
+        scene.add(new THREE.AxesHelper(5));
+
+        let mesh = null;
+
+        // Update value displays
+        document.getElementById('iterations').oninput = (e) => {
+            document.getElementById('iterVal').textContent = e.target.value;
+        };
+        document.getElementById('radius').oninput = (e) => {
+            document.getElementById('radiusVal').textContent = e.target.value;
+        };
+        document.getElementById('pathPoints').oninput = (e) => {
+            document.getElementById('pathVal').textContent = e.target.value;
+        };
+
+        window.generate = async function () {
+            const iterations = parseInt(document.getElementById('iterations').value);
+            const radius = parseFloat(document.getElementById('radius').value);
+            const pathPoints = parseInt(document.getElementById('pathPoints').value);
+
+            document.getElementById('info').innerHTML = '⏳ Generating...';
+
+            // Control points for path
+            const controlPoints = [
+                [0, 0, 0],
+                [2, 1, 1],
+                [1, 3, -1],
+                [3, 5, 2],
+                [4, 6, 0]
+            ];
+
+            try {
+                const response = await fetch('http://localhost:8001/sweep', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        use_differential_growth: true,
+                        dg_iterations: iterations,
+                        dg_radius: radius,
+                        dg_initial_points: 20,
+                        control_points: controlPoints,
+                        num_points: pathPoints
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Remove old mesh
+                if (mesh) {
+                    scene.remove(mesh);
+                    mesh.geometry.dispose();
+                    mesh.material.dispose();
+                }
+
+                // Create geometry
+                const geometry = new THREE.BufferGeometry();
+                const vertices = new Float32Array(data.vertices.flat());
+                geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                const indices = new Uint32Array(data.faces.flat());
+                geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+                geometry.computeVertexNormals();
+
+                // Material with gradient
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x4CAF50,
+                    metalness: 0.4,
+                    roughness: 0.3,
+                    side: THREE.DoubleSide
+                });
+
+                mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+
+                // Center camera
+                const box = new THREE.Box3().setFromObject(mesh);
+                const center = box.getCenter(new THREE.Vector3());
+                controls.target.copy(center);
+
+                document.getElementById('info').innerHTML = `
+                    ✅ Generated!<br>
+                    Vertices: ${data.vertices.length}<br>
+                    Faces: ${data.faces.length}
+                `;
+
+            } catch (err) {
+                document.getElementById('info').innerHTML = `❌ Error: ${err.message}`;
+                console.error(err);
+            }
+        };
+
+        // Animate
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Auto-generate on load
+        generate();
+    </script>
+</body>
+
+</html>

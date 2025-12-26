@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from sweep.sweep import sweep
 from spline.bezier import bezier_curve
+from differentialgrowth.differentialgrowth import generate_differential_growth_profile
 
 class SweepHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -31,12 +32,25 @@ class SweepHandler(BaseHTTPRequestHandler):
             data = json.loads(post_data.decode('utf-8'))
             
             try:
-                cross_section = np.array(data['cross_section'])
+                # Check if using differential growth for cross-section
+                if 'use_differential_growth' in data and data['use_differential_growth']:
+                    # Generate organic cross-section
+                    dg_radius = data.get('dg_radius', 0.3)
+                    dg_iterations = data.get('dg_iterations', 100)
+                    dg_initial_points = data.get('dg_initial_points', 20)
+                    
+                    cross_section = generate_differential_growth_profile(
+                        initial_radius=dg_radius,
+                        num_initial_points=dg_initial_points,
+                        iterations=dg_iterations
+                    )
+                else:
+                    cross_section = np.array(data['cross_section'])
                 
                 # Check if control_points are provided (use Bezier)
                 if 'control_points' in data:
                     control_points = np.array(data['control_points'])
-                    num_points = data.get('num_points', 100)
+                    num_points = data.get('path_points', data.get('num_points', 100))
                     path = bezier_curve(control_points, num_points)
                 else:
                     # Use direct path
