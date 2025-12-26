@@ -11,10 +11,7 @@ from sweep import sweep
 cross_section = np.array([
     [0.0, 0.0],
     [0.2, 0.05],
-    [0.5, 0.08],
-    [0.8, 0.03],
-    [1.0, 0.0]
-])
+    [0.8, 0.03]])
 
 # Generate path using Bézier curve with more steps
 def bezier_curve(points, num_samples=15):

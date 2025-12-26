@@ -6,6 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from sweep.sweep import sweep
+from spline.bezier import bezier_curve
 
 class SweepHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -31,7 +32,16 @@ class SweepHandler(BaseHTTPRequestHandler):
             
             try:
                 cross_section = np.array(data['cross_section'])
-                path = np.array(data['path'])
+                
+                # Check if control_points are provided (use Bezier)
+                if 'control_points' in data:
+                    control_points = np.array(data['control_points'])
+                    num_points = data.get('num_points', 100)
+                    path = bezier_curve(control_points, num_points)
+                else:
+                    # Use direct path
+                    path = np.array(data['path'])
+                
                 vertices, faces = sweep(cross_section, path)
                 
                 response = {'vertices': vertices.tolist(), 'faces': faces.tolist()}
