@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Heat Exchanger Generator</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+        }
+
+        #canvas {
+            display: block;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        h3 {
+            margin: 0 0 15px 0;
+            color: #ff6b35;
+        }
+
+        h4 {
+            margin: 15px 0 10px 0;
+            color: #4CAF50;
+            font-size: 14px;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px 0;
+            font-size: 12px;
+        }
+
+        input[type="range"],
+        input[type="number"] {
+            width: 100%;
+        }
+
+        select {
+            width: 100%;
+            padding: 5px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 100%;
+            margin-top: 15px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #e55a25;
+        }
+
+        #info {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        .value {
+            color: #ff6b35;
+            font-weight: bold;
+        }
+
+        .tube-config {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid #ff6b35;
+        }
+
+        .tube-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .tube-title {
+            color: #ff6b35;
+            font-weight: bold;
+        }
+
+        #tubesContainer {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2a2a2a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <h3>🔥 Heat Exchanger Generator</h3>
+
+        <label>Number of Tubes: <span class="value" id="numTubesVal">7</span></label>
+        <input type="number" id="numTubes" min="1" max="20" value="7">
+
+        <label>Tube Length: <span class="value" id="lengthVal">20</span></label>
+        <input type="range" id="tubeLength" min="10" max="40" value="20" step="1">
+
+        <label>Path Points: <span class="value" id="pathVal">50</span></label>
+        <input type="range" id="pathPoints" min="20" max="100" value="50" step="5">
+
+        <h4>📊 Cross-Section Type</h4>
+        <select id="crossSectionType">
+            <option value="circle">Circle</option>
+            <option value="differential_growth">Differential Growth</option>
+        </select>
+
+        <label>Tube Radius: <span class="value" id="radiusVal">0.15</span></label>
+        <input type="range" id="tubeRadius" min="0.05" max="0.5" value="0.15" step="0.01">
+
+        <div id="dgOptions" style="display: none;">
+            <label>DG Iterations: <span class="value" id="dgIterVal">50</span></label>
+            <input type="range" id="dgIterations" min="10" max="100" value="50" step="5">
+        </div>
+
+        <button onclick="generate()">🚀 Generate Heat Exchanger</button>
+        <div id="info"></div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let tubeConfigs = [];
+
+        // Initialize Three.js scene
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(10, 10, 20);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 10);
+            scene.add(directionalLight);
+
+            const directionalLight2 = new THREE.DirectionalLight(0x4CAF50, 0.3);
+            directionalLight2.position.set(-10, -10, -10);
+            scene.add(directionalLight2);
+
+            // Grid
+            const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // Update tube configurations when number changes
+        function updateTubeConfigs() {
+            const numTubes = parseInt(document.getElementById('numTubes').value);
+            document.getElementById('numTubesVal').textContent = numTubes;
+        }
+
+        // Generate heat exchanger
+        window.generate = async function () {
+            const info = document.getElementById('info');
+            info.textContent = '⏳ Generating...';
+
+            const numTubes = parseInt(document.getElementById('numTubes').value);
+            const tubeLength = parseFloat(document.getElementById('tubeLength').value);
+            const pathPoints = parseInt(document.getElementById('pathPoints').value);
+            const crossSectionType = document.getElementById('crossSectionType').value;
+            const tubeRadius = parseFloat(document.getElementById('tubeRadius').value);
+            const dgIterations = parseInt(document.getElementById('dgIterations').value);
+
+            // Create tube configurations - all tubes have the same type
+            const tubes = [];
+            for (let i = 0; i < numTubes; i++) {
+                tubes.push({
+                    type: crossSectionType,
+                    radius: tubeRadius,
+                    iterations: dgIterations,
+                    initial_points: 12
+                });
+            }
+
+            try {
+                const response = await fetch('http://localhost:8002/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        num_tubes: numTubes,
+                        tube_length: tubeLength,
+                        path_points: pathPoints,
+                        tubes: tubes
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    info.textContent = '❌ Error: ' + data.error;
+                    console.error(data);
+                    return;
+                }
+
+                // Clear existing tubes
+                while (scene.children.length > 0) {
+                    const obj = scene.children[0];
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) obj.material.dispose();
+                    scene.remove(obj);
+                }
+
+                // Re-add lights and grid
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 10);
+                scene.add(directionalLight);
+
+                const directionalLight2 = new THREE.DirectionalLight(0x4CAF50, 0.3);
+                directionalLight2.position.set(-10, -10, -10);
+                scene.add(directionalLight2);
+
+                const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x222222);
+                scene.add(gridHelper);
+
+                // Add all tubes
+                data.tubes.forEach((tube, index) => {
+                    const geometry = new THREE.BufferGeometry();
+
+                    const vertices = new Float32Array(tube.vertices.flat());
+                    const indices = new Uint32Array(tube.faces.flat());
+
+                    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+                    geometry.computeVertexNormals();
+
+                    // Different colors for different tubes
+                    const hue = (index / data.num_tubes);
+                    const color = new THREE.Color().setHSL(hue, 0.8, 0.6);
+
+                    const material = new THREE.MeshStandardMaterial({
+                        color: color,
+                        metalness: 0.3,
+                        roughness: 0.4,
+                        side: THREE.DoubleSide
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    scene.add(mesh);
+                });
+
+                info.textContent = `✅ Generated ${data.num_tubes} tubes!`;
+
+            } catch (error) {
+                info.textContent = '❌ Error: ' + error.message;
+                console.error(error);
+            }
+        };
+
+        // Update slider values
+        document.getElementById('tubeLength').addEventListener('input', (e) => {
+            document.getElementById('lengthVal').textContent = e.target.value;
+        });
+
+        document.getElementById('pathPoints').addEventListener('input', (e) => {
+            document.getElementById('pathVal').textContent = e.target.value;
+        });
+
+        document.getElementById('tubeRadius').addEventListener('input', (e) => {
+            document.getElementById('radiusVal').textContent = e.target.value;
+        });
+
+        document.getElementById('dgIterations').addEventListener('input', (e) => {
+            document.getElementById('dgIterVal').textContent = e.target.value;
+        });
+
+        document.getElementById('numTubes').addEventListener('input', updateTubeConfigs);
+
+        // Toggle DG options visibility
+        document.getElementById('crossSectionType').addEventListener('change', (e) => {
+            const dgOptions = document.getElementById('dgOptions');
+            dgOptions.style.display = e.target.value === 'differential_growth' ? 'block' : 'none';
+        });
+
+        // Initialize
+        init();
+        updateTubeConfigs();
+        generate(); // Auto-generate on load
+    </script>
+</body>
+
+</html>
