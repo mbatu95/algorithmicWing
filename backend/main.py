@@ -1,6 +1,6 @@
 # Utility function to rotate geometry mesh vertices around x, y, z axes (in radians)
 from backend.utils.geometry_utils import rotate_geometry, translate_geometry, scale_geometry
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from backend.plane.wing import Wing
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,7 +27,10 @@ POINTS = 300
 DEPTH = 10
 
 @app.get('/generate-wing')
-async def shaper():
+async def shaper(lift: float = Query(default=0.5, ge=0.0, le=1.0, description="Lift coefficient (0-1)")):
+    # Create AeroDesign with lift parameter
+    aero = AeroDesign(lift=lift)
+    
     # Right wing (wing1) - will be rotated 180°, so use mirror_mode=True
     wing1 = Wing(
         naca=NACA,
@@ -39,7 +42,6 @@ async def shaper():
         taper_ratio=0.4
     )
     
-    aero = AeroDesign(lift=1)
     aero.apply_to_wing(wing1)
 
     mesh1 = wing1.get_mesh()
@@ -106,12 +108,39 @@ async def shaper():
 
     rotate_geometry(geo_window, angles=(0, np.radians(-90), 0))
     
-    
-
     geometries = [geo_wing1, geo_wing2, geo_fuselage, geo_window]
+    
+    # Get aero parameters
+    aero_params = aero.get_parameters()
+    
+    # Calculate wing area for lift calculations
+    wing_area = SPAN * CHORD * (1 + aero_params['taper_ratio']) / 2  # Trapezoidal wing area
+    
+    # Calculate some example flight data
+    example_speed = 50.0  # m/s
+    lift_force_data = aero.calculate_lift_force(
+        airspeed=example_speed,
+        wing_area=wing_area,
+        angle_of_attack_deg=5.0
+    )
 
     return {
-        'geometries': [g.to_dict() for g in geometries]
+        'geometries': [g.to_dict() for g in geometries],
+        'wing_parameters': {
+            'naca_profile': aero_params['naca_profile'],  # Dynamic NACA based on lift
+            'chord_root': CHORD,
+            'span': SPAN,
+            'wing_area_m2': round(wing_area, 2),
+            'aspect_ratio': round((SPAN ** 2) / wing_area, 2),
+            **aero_params
+        },
+        'aerodynamics': {
+            'lift_coefficient': lift,
+            'induced_drag_coefficient': round(aero.calculate_induced_drag(), 4),
+            'example_lift_force_N': round(lift_force_data['lift_force_N'], 1),
+            'example_lift_force_kgf': round(lift_force_data['lift_force_kgf'], 1),
+            'example_speed_ms': example_speed
+        }
     }
     
     #buraya en son gelecez

@@ -4,7 +4,7 @@ Takes an existing Wing instance and morphs it according to flight conditions.
 """
 
 import numpy as np
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 from backend.plane.wing import Wing
 
 
@@ -30,15 +30,40 @@ class AeroDesign:
         self.lift = lift
         self._params = self._calculate_parameters()
     
-    def _calculate_parameters(self) -> Dict[str, float]:
+    def _calculate_parameters(self) -> Dict[str, Any]:
         """
         Calculate aerodynamic parameters based on lift coefficient.
         
         Returns:
-            dict: Morphing parameters for wing transformation
+            dict: Morphing parameters for wing transformation including NACA profile
+        
+        Aerodynamic Logic:
+        - Low lift (high speed): Thin airfoil, low camber, minimal morphing
+        - High lift (low speed): Thick airfoil, high camber, aggressive morphing
         """
+        # Calculate NACA profile based on lift
+        # NACA 4-digit: MPXX where M=max camber %, P=position (×10%), XX=thickness %
+        
+        # Camber (first digit): 2-6% max camber
+        # Higher camber = more lift but more drag
+        max_camber = int(2 + (self.lift * 4))  # 2 to 6
+        
+        # Camber position (second digit): 4-5 (40-50% chord position)
+        # Keep around mid-chord for balanced characteristics
+        camber_position = int(4 + (self.lift * 1))  # 4 to 5
+        
+        # Thickness (last two digits): 10% to 18% of chord
+        # Real aircraft: fighters ~8-12%, airliners ~12-15%, high-lift ~15-18%
+        thickness_percent = int(10 + (self.lift * 8))  # 10 to 18
+        
+        # Build NACA string
+        naca_profile = f"{max_camber}{camber_position}{thickness_percent:02d}"
+        
         return {
-            'thickness_factor': 0.2 + (self.lift * 0.3),      # 0.2 to 0.5
+            'naca_profile': naca_profile,
+            # Thickness factor: Additional morphing multiplier on top of NACA thickness
+            # Lower values since NACA already defines base thickness
+            'thickness_factor': 0.8 + (self.lift * 0.4),      # 0.8 to 1.2 (more realistic)
             'dihedral_angle_deg': 25 - (self.lift * 15),      # 25° to 10° (corrected)
             'shift_amount': 0.8 + (self.lift * 1.0),          # 0.8 to 1.8
             'taper_ratio': 0.6 - (self.lift * 0.3),           # 0.6 to 0.3
@@ -156,6 +181,9 @@ class AeroDesign:
         Returns:
             Wing: The same wing instance (modified in place)
         """
+        # Update wing's NACA profile based on lift (triggers profile regeneration)
+        wing.set_naca(self._params['naca_profile'])
+        
         # Update wing's taper ratio
         wing.taper_ratio = self._params['taper_ratio']
         
