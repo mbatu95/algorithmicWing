@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.geometry.geometry import Geometry
 from backend.plane.fuselage import Fuselage
 from backend.plane.window import Window
+from backend.plane.aero_design import AeroDesign
 
 app = FastAPI()
 
@@ -38,13 +39,9 @@ async def shaper():
         taper_ratio=0.4
     )
     
-    wing1.set_morph(
-        start_percent=0.6,
-        thickness_factor=0.3,
-        shift_amount=-1.3,              # Same value for both wings
-        dihedral_angle=np.radians(25)
-        
-    )
+    aero = AeroDesign(lift=1)
+    aero.apply_to_wing(wing1)
+
     mesh1 = wing1.get_mesh()
 
     # Left wing (wing2) - stays in original orientation, so mirror_mode=False
@@ -58,12 +55,7 @@ async def shaper():
         taper_ratio=0.4
     )
     
-    wing2.set_morph(
-        start_percent=0.6,
-        thickness_factor=0.3,
-        shift_amount=1.3,              # Same value for both wings
-        dihedral_angle=np.radians(-25)
-    )
+    aero.apply_to_wing(wing2)
     mesh2 = wing2.get_mesh()
 
 
