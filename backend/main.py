@@ -1,12 +1,12 @@
 # Utility function to rotate geometry mesh vertices around x, y, z axes (in radians)
-from geometry_utils import rotate_geometry, translate_geometry, scale_geometry
+from backend.utils.geometry_utils import rotate_geometry, translate_geometry, scale_geometry
 from fastapi import FastAPI
-from wing import Wing
+from backend.plane.wing import Wing
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
-from geometry import Geometry
-from fuselage import Fuselage
-from window import Window
+from backend.geometry.geometry import Geometry
+from backend.plane.fuselage import Fuselage
+from backend.plane.window import Window
 
 app = FastAPI()
 

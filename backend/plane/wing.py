@@ -1,4 +1,4 @@
-from geometry.mesh import Mesh
+from backend.geometry.mesh import Mesh
 from typing import List, Tuple
 import numpy as np
 
