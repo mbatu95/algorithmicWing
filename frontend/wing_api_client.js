@@ -8,9 +8,20 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 let scene, camera, renderer, controls;
 let currentLift = 0.5;
 let currentWingspan = 12.0;
+let currentMission = null;
 
 async function fetchWingData(lift = 0.5, wingspan = 12.0) {
     const response = await fetch(`http://127.0.0.1:8000/generate-wing?lift=${lift}&wingspan=${wingspan}`);
+    return await response.json();
+}
+
+async function fetchMissions() {
+    const response = await fetch('http://127.0.0.1:8000/missions');
+    return await response.json();
+}
+
+async function fetchMissionWing(missionName) {
+    const response = await fetch(`http://127.0.0.1:8000/mission/${missionName}`);
     return await response.json();
 }
 
@@ -247,6 +258,192 @@ function createLiftSlider() {
     container.appendChild(wingspanValueDisplay);
     container.appendChild(wingspanTypeLabel);
     document.body.appendChild(container);
+
+    return { liftSlider, wingspanSlider };
+}
+
+async function createMissionSelector() {
+    const container = document.createElement('div');
+    container.style.cssText = `
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 20px;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        min-width: 280px;
+        max-width: 350px;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = '🎯 MISSION PROFILES';
+    title.style.cssText = `
+        margin: 0 0 15px 0;
+        color: #FF9800;
+        font-family: 'Courier New', monospace;
+        border-bottom: 2px solid #FF9800;
+        padding-bottom: 5px;
+    `;
+
+    const description = document.createElement('div');
+    description.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        color: #888;
+        margin-bottom: 15px;
+        line-height: 1.5;
+    `;
+    description.textContent = 'Select a mission profile to automatically optimize wing design';
+
+    container.appendChild(title);
+    container.appendChild(description);
+
+    // Fetch missions
+    const missionsData = await fetchMissions();
+    const missions = missionsData.missions;
+
+    // Create mission buttons
+    missions.forEach(mission => {
+        const button = document.createElement('button');
+        button.textContent = `${getMissionIcon(mission.name)} ${mission.display_name}`;
+        button.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid #FF9800;
+            border-radius: 5px;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        `;
+
+        button.addEventListener('mouseenter', () => {
+            button.style.background = 'rgba(255, 152, 0, 0.3)';
+            button.style.transform = 'translateX(5px)';
+        });
+
+        button.addEventListener('mouseleave', () => {
+            button.style.background = 'rgba(255, 152, 0, 0.1)';
+            button.style.transform = 'translateX(0)';
+        });
+
+        button.addEventListener('click', async () => {
+            currentMission = mission.name;
+
+            // Highlight selected button
+            container.querySelectorAll('button').forEach(btn => {
+                btn.style.background = 'rgba(255, 152, 0, 0.1)';
+                btn.style.borderWidth = '1px';
+            });
+            button.style.background = 'rgba(255, 152, 0, 0.5)';
+            button.style.borderWidth = '2px';
+
+            // Fetch and apply mission wing
+            const data = await fetchMissionWing(mission.name);
+
+            // Update sliders to match mission parameters
+            currentLift = data.aerodynamics.lift_coefficient;
+            currentWingspan = data.wing_parameters.span;
+
+            // Update scene
+            await updateScene(data);
+
+            // Show mission info
+            showMissionInfo(data.mission);
+        });
+
+        container.appendChild(button);
+    });
+
+    document.body.appendChild(container);
+}
+
+function getMissionIcon(missionName) {
+    const icons = {
+        'endurance': '🛫',
+        'speed': '⚡',
+        'heavy_lift': '📦',
+        'agile': '🎪',
+        'cruise': '✈️',
+        'stol': '🛬'
+    };
+    return icons[missionName] || '🔧';
+}
+
+function showMissionInfo(mission) {
+    // Remove existing mission info if any
+    const existing = document.getElementById('mission-info');
+    if (existing) existing.remove();
+
+    const info = document.createElement('div');
+    info.id = 'mission-info';
+    info.style.cssText = `
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(255, 152, 0, 0.95);
+        padding: 15px;
+        border-radius: 10px;
+        border: 2px solid #FF9800;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        z-index: 1001;
+        max-width: 300px;
+        font-family: 'Courier New', monospace;
+        color: white;
+        animation: slideIn 0.3s ease;
+    `;
+
+    info.innerHTML = `
+        <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">
+            ${getMissionIcon(mission.name)} ${mission.display_name.toUpperCase()}
+        </div>
+        <div style="font-size: 11px; line-height: 1.6; margin-bottom: 10px;">
+            ${mission.description}
+        </div>
+        <div style="font-size: 10px; color: rgba(255,255,255,0.8); padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3);">
+            <strong>Examples:</strong><br>${mission.example_aircraft}
+        </div>
+        <div style="margin-top: 10px; font-size: 10px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 5px;">
+            <div>🎯 Lift Priority: ${(mission.weights.lift * 100).toFixed(0)}%</div>
+            <div>💨 Drag Priority: ${(mission.weights.drag * 100).toFixed(0)}%</div>
+            <div>⚖️ Stability: ${(mission.weights.stability * 100).toFixed(0)}%</div>
+            <div>🎮 Maneuver: ${(mission.weights.maneuver * 100).toFixed(0)}%</div>
+        </div>
+        <button onclick="this.parentElement.remove()" style="
+            margin-top: 10px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid white;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+        ">Close</button>
+    `;
+
+    // Add CSS animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(info);
+
+    // Auto-close after 10 seconds
+    setTimeout(() => {
+        if (info.parentElement) info.remove();
+    }, 10000);
 }
 
 async function updateScene(data) {
@@ -329,6 +526,7 @@ async function init() {
     // Create UI panels
     createInfoPanel();
     createLiftSlider();
+    await createMissionSelector();
 
     // Add initial geometries
     await updateScene(data);

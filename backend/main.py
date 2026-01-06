@@ -8,6 +8,7 @@ from backend.geometry.geometry import Geometry
 from backend.plane.fuselage import Fuselage
 from backend.plane.window import Window
 from backend.plane.aero_design import AeroDesign
+from backend.plane.mission_profile import MissionProfile
 
 app = FastAPI()
 
@@ -171,5 +172,124 @@ async def shaper(
             'example_speed_ms': example_speed
         }
     }
+
+@app.get('/missions')
+async def get_missions():
+    """Get list of available mission profiles"""
+    missions = []
+    for mission_name in MissionProfile.get_mission_names():
+        params = MissionProfile.calculate_optimal_parameters(mission_name)
+        missions.append({
+            'name': mission_name,
+            'display_name': mission_name.replace('_', ' ').title(),
+            'description': MissionProfile.get_mission_description(mission_name),
+            'example_aircraft': MissionProfile.get_mission_example_aircraft(mission_name),
+            'optimal_lift': round(params['lift_coefficient'], 3),
+            'optimal_wingspan': round(params['wingspan'], 1),
+            'weights': params['mission_weights']
+        })
+    return {'missions': missions}
+
+@app.get('/mission/{mission_name}')
+async def generate_mission_wing(mission_name: str):
+    """Generate wing optimized for specific mission profile"""
+    try:
+        # Get optimal parameters for mission
+        params = MissionProfile.calculate_optimal_parameters(mission_name)
+        lift = params['lift_coefficient']
+        wingspan = params['wingspan']
+        
+        # Generate wing with optimal parameters
+        # Reuse the existing shaper logic
+        aero = AeroDesign(lift=lift)
+        aero_params = aero.get_parameters()
+        
+        taper_ratio = aero_params['taper_ratio']
+        scaled_area = TARGET_WING_AREA * (wingspan / DEFAULT_SPAN)
+        root_chord = calculate_root_chord(wingspan, scaled_area, taper_ratio)
+        
+        # Right wing
+        wing1 = Wing(
+            naca=NACA,
+            chord=root_chord,
+            span=wingspan,
+            points=POINTS,
+            depth=DEPTH,
+            mirror_mode=True,
+            taper_ratio=taper_ratio
+        )
+        aero.apply_to_wing(wing1)
+        mesh1 = wing1.get_mesh()
+
+        # Left wing
+        wing2 = Wing(
+            naca=NACA,
+            chord=root_chord,
+            span=wingspan,
+            points=POINTS,
+            depth=DEPTH,
+            mirror_mode=False,
+            taper_ratio=taper_ratio
+        )
+        aero.apply_to_wing(wing2)
+        mesh2 = wing2.get_mesh()
+
+        # Geometries
+        geo_wing1 = Geometry(type_='wing', mesh=mesh1, position=[11, 0, 6], color='#b0c4de', material='metal')
+        geo_wing2 = Geometry(type_='wing', mesh=mesh2, position=[8.8, 0, 6], color='#ff4444', material='plastic')
+        meshfuselage = Fuselage()
+        geo_fuselage = Geometry(type_='fuselage', mesh=meshfuselage, position=[10, 0, 0], color='#0000ff', material='plastic')
+        meshwindow = Window()
+        geo_window = Geometry(type_='window', mesh=meshwindow, position=[11.2, 0, 4], color='#ffff00', material='plastic')
+        
+        scale_geometry(geo_window, scale=2.0)
+        rotate_geometry(geo_wing1, angles=(0, np.radians(-90), 0))
+        rotate_geometry(geo_wing1, angles=(0, np.radians(180), 0))
+        rotate_geometry(geo_wing1, angles=(np.radians(180), 0, 0))
+        rotate_geometry(geo_wing2, angles=(0, np.radians(-90), 0))
+        rotate_geometry(geo_window, angles=(0, np.radians(-90), 0))
+
+        geometries = [geo_wing1, geo_wing2, geo_fuselage, geo_window]
+        
+        # Calculate metrics
+        actual_wing_area = wingspan * root_chord * (1 + taper_ratio) / 2
+        tip_chord = root_chord * taper_ratio
+        aspect_ratio = (wingspan ** 2) / actual_wing_area
+        
+        example_speed = 50.0
+        lift_force_data = aero.calculate_lift_force(
+            airspeed=example_speed,
+            wing_area=actual_wing_area,
+            angle_of_attack_deg=5.0
+        )
+
+        return {
+            'geometries': [g.to_dict() for g in geometries],
+            'mission': {
+                'name': mission_name,
+                'display_name': mission_name.replace('_', ' ').title(),
+                'description': MissionProfile.get_mission_description(mission_name),
+                'example_aircraft': MissionProfile.get_mission_example_aircraft(mission_name),
+                'weights': params['mission_weights']
+            },
+            'wing_parameters': {
+                'naca_profile': aero_params['naca_profile'],
+                'chord_root': round(root_chord, 2),
+                'chord_tip': round(tip_chord, 2),
+                'span': wingspan,
+                'wing_area_m2': round(actual_wing_area, 2),
+                'aspect_ratio': round(aspect_ratio, 2),
+                **{k: v for k, v in aero_params.items() if k != 'naca_profile'}
+            },
+            'aerodynamics': {
+                'lift_coefficient': lift,
+                'induced_drag_coefficient': round(aero.calculate_induced_drag(aspect_ratio), 4),
+                'example_lift_force_N': round(lift_force_data['lift_force_N'], 1),
+                'example_lift_force_kgf': round(lift_force_data['lift_force_kgf'], 1),
+                'example_speed_ms': example_speed
+            }
+        }
+    except ValueError as e:
+        return {'error': str(e)}
     
     #buraya en son gelecez
