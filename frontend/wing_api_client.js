@@ -11,10 +11,11 @@ let currentRootChord = 3.0;
 let currentNaca = '4656';
 let currentDihedral = 5.0;
 let currentTaperRatio = 0.5;
+let currentShiftAmount = 1.0;
 
-async function fetchWingData(wingspan = 12.0, rootChord = 3.0, naca = '4656', dihedral = 5.0, taperRatio = 0.5) {
-    console.log('Fetching wing data with:', { wingspan, rootChord, naca, dihedral, taperRatio });
-    const response = await fetch(`http://127.0.0.1:8000/generate-wing?wingspan=${wingspan}&root_chord=${rootChord}&naca=${naca}&dihedral=${dihedral}&taper_ratio=${taperRatio}`);
+async function fetchWingData(wingspan = 12.0, rootChord = 3.0, naca = '4656', dihedral = 5.0, taperRatio = 0.5, shiftAmount = 1.0) {
+    console.log('Fetching wing data with:', { wingspan, rootChord, naca, dihedral, taperRatio, shiftAmount });
+    const response = await fetch(`http://127.0.0.1:8000/generate-wing?wingspan=${wingspan}&root_chord=${rootChord}&naca=${naca}&dihedral=${dihedral}&taper_ratio=${taperRatio}&shift_amount=${shiftAmount}`);
     const data = await response.json();
     console.log('Received wing data:', data);
     return data;
@@ -249,8 +250,8 @@ function createLiftSlider() {
 
     const dihedralSlider = document.createElement('input');
     dihedralSlider.type = 'range';
-    dihedralSlider.min = '0';
-    dihedralSlider.max = '15';
+    dihedralSlider.min = '-20';
+    dihedralSlider.max = '20';
     dihedralSlider.step = '0.5';
     dihedralSlider.value = '5';
     dihedralSlider.style.cssText = `
@@ -317,6 +318,53 @@ function createLiftSlider() {
         margin-top: 5px;
     `;
 
+    // Shift Amount slider section
+    const shiftAmountLabel = document.createElement('label');
+    shiftAmountLabel.textContent = 'Kayma Miktarı';
+    shiftAmountLabel.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        color: white;
+        display: block;
+        margin-bottom: 10px;
+        margin-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 15px;
+    `;
+
+    const shiftAmountSlider = document.createElement('input');
+    shiftAmountSlider.type = 'range';
+    shiftAmountSlider.min = '0.0';
+    shiftAmountSlider.max = '2.0';
+    shiftAmountSlider.step = '0.1';
+    shiftAmountSlider.value = '1.0';
+    shiftAmountSlider.style.cssText = `
+        width: 100%;
+        margin: 10px 0;
+        accent-color: #E91E63;
+    `;
+
+    const shiftAmountValueDisplay = document.createElement('div');
+    shiftAmountValueDisplay.textContent = '1.0';
+    shiftAmountValueDisplay.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 20px;
+        color: #E91E63;
+        text-align: center;
+        margin-top: 5px;
+        font-weight: bold;
+    `;
+
+    const shiftAmountInfo = document.createElement('div');
+    shiftAmountInfo.textContent = 'Kanat kamber ayarı';
+    shiftAmountInfo.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        color: #888;
+        text-align: center;
+        margin-top: 5px;
+    `;
+
     // Event listeners
     wingspanSlider.addEventListener('input', async (e) => {
         currentWingspan = parseFloat(e.target.value);
@@ -330,7 +378,7 @@ function createLiftSlider() {
         else wingspanTypeLabel.textContent = 'Tip: Geniş Gövdeli Uçak';
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
         await updateScene(data);
     });
 
@@ -341,7 +389,7 @@ function createLiftSlider() {
         rootChordInput.value = currentRootChord.toFixed(1);
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
         await updateScene(data);
     });
 
@@ -356,7 +404,7 @@ function createLiftSlider() {
         }
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
         await updateScene(data);
     });
 
@@ -365,7 +413,7 @@ function createLiftSlider() {
         dihedralValueDisplay.textContent = `${currentDihedral.toFixed(1)}°`;
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
         await updateScene(data);
     });
 
@@ -374,7 +422,16 @@ function createLiftSlider() {
         taperRatioValueDisplay.textContent = currentTaperRatio.toFixed(2);
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
+        await updateScene(data);
+    });
+
+    shiftAmountSlider.addEventListener('input', async (e) => {
+        currentShiftAmount = parseFloat(e.target.value);
+        shiftAmountValueDisplay.textContent = currentShiftAmount.toFixed(1);
+
+        // Fetch and update
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
         await updateScene(data);
     });
 
@@ -394,6 +451,10 @@ function createLiftSlider() {
     container.appendChild(taperRatioSlider);
     container.appendChild(taperRatioValueDisplay);
     container.appendChild(taperRatioInfo);
+    container.appendChild(shiftAmountLabel);
+    container.appendChild(shiftAmountSlider);
+    container.appendChild(shiftAmountValueDisplay);
+    container.appendChild(shiftAmountInfo);
     document.body.appendChild(container);
 }
 
@@ -439,7 +500,7 @@ async function updateScene(data) {
 // Main visualization function
 async function init() {
     // Fetch initial data
-    const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
+    const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
 
     // Three.js setup
     scene = new THREE.Scene();

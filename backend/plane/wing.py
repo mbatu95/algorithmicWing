@@ -108,7 +108,9 @@ class Wing:
             # Chord tapering
             chord_here = self.chord * (1.0 - span_ratio * (1.0 - self.taper_ratio))
             # Apply dihedral angle (progressive rotation around X axis)
-            dihedral_rotation = self.dihedral_angle * span_ratio
+            # For mirror_mode wings, negate dihedral to maintain symmetric V-shape
+            dihedral_angle_to_use = -self.dihedral_angle if self.mirror_mode else self.dihedral_angle
+            dihedral_rotation = dihedral_angle_to_use * span_ratio
             cos_dihedral = np.cos(dihedral_rotation)
             sin_dihedral = np.sin(dihedral_rotation)
             for x, y in coords:
@@ -116,10 +118,10 @@ class Wing:
                 x_scaled = x / self.chord * chord_here
                 # Apply thickness morphing
                 y_morphed = y * (1.0 + (self.thickness_factor - 1.0) * morph_factor)
-                # Apply shift (camber adjustment) - negate if mirror_mode is True
+                # Apply shift (camber adjustment) - keep same direction for both wings
                 shift = self.shift_amount * morph_factor
-                if self.mirror_mode:
-                    shift = -shift
+                # Note: We don't negate shift for mirror_mode anymore
+                # This ensures both wings twist in the same direction
                 x_morphed = x_scaled + shift
                 # Apply dihedral rotation (rotate in YZ plane)
                 y_rotated = y_morphed * cos_dihedral - z * sin_dihedral

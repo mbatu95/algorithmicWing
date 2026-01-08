@@ -89,19 +89,21 @@ async def shaper(
     wingspan: float = Query(default=12.0, ge=6.0, le=20.0, description="Wingspan in meters"),
     root_chord: float = Query(default=None, ge=1.0, le=10.0, description="Root chord length in meters (optional)"),
     naca: str = Query(default='4656', min_length=4, max_length=4, description="NACA 4-digit airfoil code"),
-    dihedral: float = Query(default=5.0, ge=0.0, le=15.0, description="Dihedral angle in degrees"),
+    dihedral: float = Query(default=5.0, ge=-20.0, le=20.0, description="Dihedral angle in degrees"),
     taper_ratio: float = Query(default=None, ge=0.3, le=1.0, description="Taper ratio (tip chord / root chord) - optional"),
+    shift_amount: float = Query(default=None, ge=0.0, le=2.0, description="Shift amount (camber adjustment) - optional"),
     lift: float = Query(default=0.5, ge=0.0, le=1.0, description="Lift coefficient (0-1) - optional")
 ):
     """
-    Generate wing geometry based on wingspan, root chord, NACA, dihedral, taper ratio and other parameters.
+    Generate wing geometry based on wingspan, root chord, NACA, dihedral, taper ratio, shift amount and other parameters.
     
     Args:
         wingspan: Total wingspan in meters (6-20m) - affects aspect ratio and area
         root_chord: Root chord length in meters (1-10m) - if None, auto-calculated
         naca: NACA 4-digit airfoil code (e.g., '4656')
-        dihedral: Dihedral angle in degrees (0-15°)
+        dihedral: Dihedral angle in degrees (-20 to +20°) - negative is anhedral, positive is dihedral
         taper_ratio: Taper ratio (tip chord / root chord) (0.3-1.0) - if None, uses AeroDesign value
+        shift_amount: Shift amount for camber adjustment (0.0-2.0) - if None, uses AeroDesign value
         lift: Lift coefficient (0-1) - affects camber, thickness, taper (optional)
     """
     # Validate NACA is 4 digits
@@ -111,7 +113,7 @@ async def shaper(
     # Calculate lift coefficient from NACA profile (at typical cruise AoA)
     calculated_lift = calculate_lift_from_naca(naca, angle_of_attack_deg=5.0)
     
-    print(f"Generating wing with NACA: {naca}, wingspan: {wingspan}, root_chord: {root_chord}, dihedral: {dihedral}, taper_ratio: {taper_ratio}")
+    print(f"Generating wing with NACA: {naca}, wingspan: {wingspan}, root_chord: {root_chord}, dihedral: {dihedral}, taper_ratio: {taper_ratio}, shift_amount: {shift_amount}")
     print(f"Calculated lift coefficient from NACA {naca}: {calculated_lift:.3f}")
     
     # Create AeroDesign with lift parameter
@@ -124,6 +126,13 @@ async def shaper(
     else:
         # Override AeroDesign's taper ratio with user-provided value
         aero_params['taper_ratio'] = taper_ratio
+    
+    # Use provided shift_amount or get from AeroDesign
+    if shift_amount is None:
+        shift_amount = aero_params['shift_amount']
+    else:
+        # Override AeroDesign's shift amount with user-provided value
+        aero_params['shift_amount'] = shift_amount
     
     # Calculate root chord based on wingspan and taper ratio
     
@@ -152,15 +161,17 @@ async def shaper(
     # Store the original values before applying aero design
     original_naca = naca
     original_taper_ratio = taper_ratio
+    original_shift_amount = shift_amount
+    original_dihedral = dihedral_radians
     
     aero.apply_to_wing(wing1)
     
     # Restore the user-specified values (override AeroDesign's values)
     wing1.set_naca(original_naca)
     wing1.taper_ratio = original_taper_ratio
-    
-    # Apply dihedral angle
-    wing1.dihedral_angle = dihedral_radians
+    wing1.shift_amount = original_shift_amount
+    # Apply dihedral angle - same direction for both wings (both angled up)
+    wing1.dihedral_angle = original_dihedral
 
     mesh1 = wing1.get_mesh()
 
@@ -180,9 +191,9 @@ async def shaper(
     # Restore the user-specified values (override AeroDesign's values)
     wing2.set_naca(original_naca)
     wing2.taper_ratio = original_taper_ratio
-    
-    # Apply dihedral angle
-    wing2.dihedral_angle = dihedral_radians
+    wing2.shift_amount = original_shift_amount
+    # Apply dihedral angle - same direction for both wings (both angled up)
+    wing2.dihedral_angle = original_dihedral
     mesh2 = wing2.get_mesh()
 
 
