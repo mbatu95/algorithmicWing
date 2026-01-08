@@ -61,7 +61,9 @@ function updateInfoPanel(data) {
                 <div>NACA Profile: <span style="color: #4CAF50">${wp.naca_profile}</span></div>
                 <div>Root Chord: <span style="color: #4CAF50">${wp.chord_root.toFixed(2)} m</span></div>
                 <div>Span: <span style="color: #4CAF50">${wp.span.toFixed(2)} m</span></div>
+                ${wp.effective_span ? `<div>Effective Span: <span style="color: #2196F3">${wp.effective_span.toFixed(2)} m</span></div>` : ''}
                 <div>Wing Area: <span style="color: #4CAF50">${wp.wing_area_m2} m²</span></div>
+                ${wp.effective_wing_area_m2 ? `<div>Effective Area: <span style="color: #2196F3">${wp.effective_wing_area_m2.toFixed(2)} m²</span></div>` : ''}
                 <div>Aspect Ratio: <span style="color: #4CAF50">${wp.aspect_ratio}</span></div>
                 <div>Taper Ratio: <span style="color: #4CAF50">${wp.taper_ratio.toFixed(3)}</span></div>
             </div>
@@ -80,8 +82,10 @@ function updateInfoPanel(data) {
         <div>
             <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🌬️ AERODYNAMICS</div>
             <div style="line-height: 1.8; padding-left: 10px;">
-                <div>C<sub>L</sub> (Lift): <span style="color: #4CAF50; font-weight: bold;">${aero.lift_coefficient.toFixed(3)}</span></div>
+                <div>C<sub>L</sub> (Base): <span style="color: #4CAF50">${aero.lift_coefficient.toFixed(3)}</span></div>
+                ${aero.effective_lift_coefficient ? `<div>C<sub>L</sub> (Effective): <span style="color: #2196F3; font-weight: bold;">${aero.effective_lift_coefficient.toFixed(3)}</span></div>` : ''}
                 <div>C<sub>Di</sub> (Drag): <span style="color: #FF6B6B">${aero.induced_drag_coefficient}</span></div>
+                ${aero.dihedral_effect_factor ? `<div style="font-size: 11px; color: #888;">Dihedral factor: ${aero.dihedral_effect_factor}</div>` : ''}
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
                     <div style="color: #888; font-size: 11px; margin-bottom: 4px;">@ ${aero.example_speed_ms} m/s, AoA ${aero.example_aoa_deg || 5}°:</div>
                     <div>Lift Force: <span style="color: #4CAF50">${aero.example_lift_force_kgf} kgf</span></div>

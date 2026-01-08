@@ -222,22 +222,40 @@ async def shaper(
     # Get aero parameters
     aero_params = aero.get_parameters()
     
-    # Calculate wing area
+    # Calculate wing area (planform area, not affected by dihedral)
     actual_wing_area = wingspan * calculated_root_chord * (1 + taper_ratio) / 2
     tip_chord = calculated_root_chord * taper_ratio
-    aspect_ratio = (wingspan ** 2) / actual_wing_area
+    
+    # Dihedral affects effective wingspan and aspect ratio
+    # cos(dihedral) accounts for the projected span reduction
+    dihedral_rad = np.radians(dihedral)
+    effective_wingspan = wingspan * np.cos(dihedral_rad)
+    effective_aspect_ratio = (effective_wingspan ** 2) / actual_wing_area
+    
+    # Dihedral also reduces effective wing area for lift generation
+    # The vertical component doesn't contribute to vertical lift
+    effective_wing_area = actual_wing_area * np.cos(dihedral_rad)
     
     # Calculate lift force using the NACA-derived lift coefficient
+    # But account for reduced effective area due to dihedral
     example_speed = 50.0  # m/s
     example_aoa = 5.0  # degrees
     
-    # Create a temporary AeroDesign with the NACA-derived lift to calculate forces
-    aero_for_calc = AeroDesign(lift=calculated_lift)
+    # Adjust lift coefficient for dihedral effects
+    # Higher dihedral slightly reduces effective lift
+    dihedral_lift_factor = np.cos(dihedral_rad)
+    effective_lift_coefficient = calculated_lift * dihedral_lift_factor
+    
+    # Create a temporary AeroDesign with the effective lift to calculate forces
+    aero_for_calc = AeroDesign(lift=min(1.0, effective_lift_coefficient))
     lift_force_data = aero_for_calc.calculate_lift_force(
         airspeed=example_speed,
-        wing_area=actual_wing_area,
+        wing_area=effective_wing_area,
         angle_of_attack_deg=example_aoa
     )
+    
+    # Calculate induced drag with effective aspect ratio
+    induced_drag_coeff = aero_for_calc.calculate_induced_drag(effective_aspect_ratio)
 
     return {
         'geometries': [g.to_dict() for g in geometries],
@@ -246,18 +264,22 @@ async def shaper(
             'chord_root': round(calculated_root_chord, 2),
             'chord_tip': round(tip_chord, 2),
             'span': wingspan,
+            'effective_span': round(effective_wingspan, 2),
             'wing_area_m2': round(actual_wing_area, 2),
-            'aspect_ratio': round(aspect_ratio, 2),
+            'effective_wing_area_m2': round(effective_wing_area, 2),
+            'aspect_ratio': round(effective_aspect_ratio, 2),
             'dihedral_angle_deg': dihedral,
             **{k: v for k, v in aero_params.items() if k != 'naca_profile'}
         },
         'aerodynamics': {
             'lift_coefficient': round(calculated_lift, 3),
-            'induced_drag_coefficient': round(aero_for_calc.calculate_induced_drag(aspect_ratio), 4),
+            'effective_lift_coefficient': round(effective_lift_coefficient, 3),
+            'induced_drag_coefficient': round(induced_drag_coeff, 4),
             'example_lift_force_N': round(lift_force_data['lift_force_N'], 1),
             'example_lift_force_kgf': round(lift_force_data['lift_force_kgf'], 1),
             'example_speed_ms': example_speed,
-            'example_aoa_deg': example_aoa
+            'example_aoa_deg': example_aoa,
+            'dihedral_effect_factor': round(dihedral_lift_factor, 3)
         }
     }
     
