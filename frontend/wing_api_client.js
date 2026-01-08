@@ -10,10 +10,11 @@ let currentWingspan = 12.0;
 let currentRootChord = 3.0;
 let currentNaca = '4656';
 let currentDihedral = 5.0;
+let currentTaperRatio = 0.5;
 
-async function fetchWingData(wingspan = 12.0, rootChord = 3.0, naca = '4656', dihedral = 5.0) {
-    console.log('Fetching wing data with:', { wingspan, rootChord, naca, dihedral });
-    const response = await fetch(`http://127.0.0.1:8000/generate-wing?wingspan=${wingspan}&root_chord=${rootChord}&naca=${naca}&dihedral=${dihedral}`);
+async function fetchWingData(wingspan = 12.0, rootChord = 3.0, naca = '4656', dihedral = 5.0, taperRatio = 0.5) {
+    console.log('Fetching wing data with:', { wingspan, rootChord, naca, dihedral, taperRatio });
+    const response = await fetch(`http://127.0.0.1:8000/generate-wing?wingspan=${wingspan}&root_chord=${rootChord}&naca=${naca}&dihedral=${dihedral}&taper_ratio=${taperRatio}`);
     const data = await response.json();
     console.log('Received wing data:', data);
     return data;
@@ -41,9 +42,9 @@ function createInfoPanel() {
 
     panel.innerHTML = `
         <h3 style="margin: 0 0 15px 0; color: #4CAF50; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">
-            ✈️ AIRCRAFT PARAMETERS
+            ✈️ UÇAK PARAMETRELERİ
         </h3>
-        <div id="info-content">Loading...</div>
+        <div id="info-content">Yükleniyor...</div>
     `;
 
     document.body.appendChild(panel);
@@ -56,39 +57,39 @@ function updateInfoPanel(data) {
     const content = document.getElementById('info-content');
     content.innerHTML = `
         <div style="margin-bottom: 15px;">
-            <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🔧 WING GEOMETRY</div>
+            <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🔧 KANAT GEOMETRİSİ</div>
             <div style="line-height: 1.8; padding-left: 10px;">
-                <div>NACA Profile: <span style="color: #4CAF50">${wp.naca_profile}</span></div>
-                <div>Root Chord: <span style="color: #4CAF50">${wp.chord_root.toFixed(2)} m</span></div>
-                <div>Span: <span style="color: #4CAF50">${wp.span.toFixed(2)} m</span></div>
-                ${wp.effective_span ? `<div>Effective Span: <span style="color: #2196F3">${wp.effective_span.toFixed(2)} m</span></div>` : ''}
-                <div>Wing Area: <span style="color: #4CAF50">${wp.wing_area_m2} m²</span></div>
-                ${wp.effective_wing_area_m2 ? `<div>Effective Area: <span style="color: #2196F3">${wp.effective_wing_area_m2.toFixed(2)} m²</span></div>` : ''}
-                <div>Aspect Ratio: <span style="color: #4CAF50">${wp.aspect_ratio}</span></div>
-                <div>Taper Ratio: <span style="color: #4CAF50">${wp.taper_ratio.toFixed(3)}</span></div>
+                <div>NACA Profili: <span style="color: #4CAF50">${wp.naca_profile}</span></div>
+                <div>Kök Veter: <span style="color: #4CAF50">${wp.chord_root.toFixed(2)} m</span></div>
+                <div>Açıklık: <span style="color: #4CAF50">${wp.span.toFixed(2)} m</span></div>
+                ${wp.effective_span ? `<div>Efektif Açıklık: <span style="color: #2196F3">${wp.effective_span.toFixed(2)} m</span></div>` : ''}
+                <div>Kanat Alanı: <span style="color: #4CAF50">${wp.wing_area_m2} m²</span></div>
+                ${wp.effective_wing_area_m2 ? `<div>Efektif Alan: <span style="color: #2196F3">${wp.effective_wing_area_m2.toFixed(2)} m²</span></div>` : ''}
+                <div>En-Boy Oranı: <span style="color: #4CAF50">${wp.aspect_ratio}</span></div>
+                <div>Daraltma Oranı: <span style="color: #4CAF50">${wp.taper_ratio.toFixed(3)}</span></div>
             </div>
         </div>
         
         <div style="margin-bottom: 15px;">
-            <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">📐 MORPHING PARAMETERS</div>
+            <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">📐 MORFOLOJ PARAMETRELERİ</div>
             <div style="line-height: 1.8; padding-left: 10px;">
-                <div>Thickness Factor: <span style="color: #4CAF50">${wp.thickness_factor.toFixed(3)}</span></div>
-                <div>Dihedral Angle: <span style="color: #4CAF50">${wp.dihedral_angle_deg.toFixed(1)}°</span></div>
-                <div>Shift Amount: <span style="color: #4CAF50">${wp.shift_amount.toFixed(2)}</span></div>
-                <div>Morph Start: <span style="color: #4CAF50">${(wp.morph_start * 100).toFixed(0)}%</span></div>
+                <div>Kalınlık Faktörü: <span style="color: #4CAF50">${wp.thickness_factor.toFixed(3)}</span></div>
+                <div>Dihedral Açısı: <span style="color: #4CAF50">${wp.dihedral_angle_deg.toFixed(1)}°</span></div>
+                <div>Kayma Miktarı: <span style="color: #4CAF50">${wp.shift_amount.toFixed(2)}</span></div>
+                <div>Morfoloj Başlangıcı: <span style="color: #4CAF50">${(wp.morph_start * 100).toFixed(0)}%</span></div>
             </div>
         </div>
         
         <div>
-            <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🌬️ AERODYNAMICS</div>
+            <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🌬️ AERODİNAMİK</div>
             <div style="line-height: 1.8; padding-left: 10px;">
-                <div>C<sub>L</sub> (Base): <span style="color: #4CAF50">${aero.lift_coefficient.toFixed(3)}</span></div>
-                ${aero.effective_lift_coefficient ? `<div>C<sub>L</sub> (Effective): <span style="color: #2196F3; font-weight: bold;">${aero.effective_lift_coefficient.toFixed(3)}</span></div>` : ''}
-                <div>C<sub>Di</sub> (Drag): <span style="color: #FF6B6B">${aero.induced_drag_coefficient}</span></div>
-                ${aero.dihedral_effect_factor ? `<div style="font-size: 11px; color: #888;">Dihedral factor: ${aero.dihedral_effect_factor}</div>` : ''}
+                <div>C<sub>L</sub> (Temel): <span style="color: #4CAF50">${aero.lift_coefficient.toFixed(3)}</span></div>
+                ${aero.effective_lift_coefficient ? `<div>C<sub>L</sub> (Efektif): <span style="color: #2196F3; font-weight: bold;">${aero.effective_lift_coefficient.toFixed(3)}</span></div>` : ''}
+                <div>C<sub>Di</sub> (Sürükleme): <span style="color: #FF6B6B">${aero.induced_drag_coefficient}</span></div>
+                ${aero.dihedral_effect_factor ? `<div style="font-size: 11px; color: #888;">Dihedral faktörü: ${aero.dihedral_effect_factor}</div>` : ''}
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
-                    <div style="color: #888; font-size: 11px; margin-bottom: 4px;">@ ${aero.example_speed_ms} m/s, AoA ${aero.example_aoa_deg || 5}°:</div>
-                    <div>Lift Force: <span style="color: #4CAF50">${aero.example_lift_force_kgf} kgf</span></div>
+                    <div style="color: #888; font-size: 11px; margin-bottom: 4px;">@ ${aero.example_speed_ms} m/s, Hücum Açısı ${aero.example_aoa_deg || 5}°:</div>
+                    <div>Kaldırma Kuvveti: <span style="color: #4CAF50">${aero.example_lift_force_kgf} kgf</span></div>
                     <div style="font-size: 11px; color: #888;">(${aero.example_lift_force_N} N)</div>
                 </div>
             </div>
@@ -113,7 +114,7 @@ function createLiftSlider() {
     `;
 
     const title = document.createElement('h3');
-    title.textContent = '🎮 FLIGHT CONTROLS';
+    title.textContent = '🎮 UÇUŞ KONTROL PANELİ';
     title.style.cssText = `
         margin: 0 0 15px 0;
         color: #4CAF50;
@@ -124,7 +125,7 @@ function createLiftSlider() {
 
     // Wingspan slider section
     const wingspanLabel = document.createElement('label');
-    wingspanLabel.textContent = 'Wingspan (m)';
+    wingspanLabel.textContent = 'Kanat Açıklığı (m)';
     wingspanLabel.style.cssText = `
         font-family: 'Courier New', monospace;
         font-size: 13px;
@@ -157,7 +158,7 @@ function createLiftSlider() {
     `;
 
     const wingspanTypeLabel = document.createElement('div');
-    wingspanTypeLabel.textContent = 'Type: Medium Transport';
+    wingspanTypeLabel.textContent = 'Tip: Orta Ölçekli Taşıma';
     wingspanTypeLabel.style.cssText = `
         font-family: 'Courier New', monospace;
         font-size: 11px;
@@ -168,7 +169,7 @@ function createLiftSlider() {
 
     // Root Chord input section
     const rootChordLabel = document.createElement('label');
-    rootChordLabel.textContent = 'Root Chord (m)';
+    rootChordLabel.textContent = 'Kök Veter (m)';
     rootChordLabel.style.cssText = `
         font-family: 'Courier New', monospace;
         font-size: 13px;
@@ -201,7 +202,7 @@ function createLiftSlider() {
 
     // NACA input section
     const nacaLabel = document.createElement('label');
-    nacaLabel.textContent = 'NACA Airfoil';
+    nacaLabel.textContent = 'NACA Kanat Profili';
     nacaLabel.style.cssText = `
         font-family: 'Courier New', monospace;
         font-size: 13px;
@@ -234,7 +235,7 @@ function createLiftSlider() {
 
     // Dihedral Angle slider section
     const dihedralLabel = document.createElement('label');
-    dihedralLabel.textContent = 'Dihedral Angle (°)';
+    dihedralLabel.textContent = 'Dihedral Açısı (°)';
     dihedralLabel.style.cssText = `
         font-family: 'Courier New', monospace;
         font-size: 13px;
@@ -269,20 +270,67 @@ function createLiftSlider() {
         font-weight: bold;
     `;
 
+    // Taper Ratio slider section
+    const taperRatioLabel = document.createElement('label');
+    taperRatioLabel.textContent = 'Daraltma Oranı';
+    taperRatioLabel.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        color: white;
+        display: block;
+        margin-bottom: 10px;
+        margin-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 15px;
+    `;
+
+    const taperRatioSlider = document.createElement('input');
+    taperRatioSlider.type = 'range';
+    taperRatioSlider.min = '0.3';
+    taperRatioSlider.max = '1.0';
+    taperRatioSlider.step = '0.05';
+    taperRatioSlider.value = '0.5';
+    taperRatioSlider.style.cssText = `
+        width: 100%;
+        margin: 10px 0;
+        accent-color: #00BCD4;
+    `;
+
+    const taperRatioValueDisplay = document.createElement('div');
+    taperRatioValueDisplay.textContent = '0.50';
+    taperRatioValueDisplay.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 20px;
+        color: #00BCD4;
+        text-align: center;
+        margin-top: 5px;
+        font-weight: bold;
+    `;
+
+    const taperRatioInfo = document.createElement('div');
+    taperRatioInfo.textContent = 'Uç veter / Kök veter';
+    taperRatioInfo.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        color: #888;
+        text-align: center;
+        margin-top: 5px;
+    `;
+
     // Event listeners
     wingspanSlider.addEventListener('input', async (e) => {
         currentWingspan = parseFloat(e.target.value);
         wingspanValueDisplay.textContent = `${currentWingspan.toFixed(1)} m`;
 
         // Update type label
-        if (currentWingspan < 8) wingspanTypeLabel.textContent = 'Type: Light Aircraft';
-        else if (currentWingspan < 12) wingspanTypeLabel.textContent = 'Type: General Aviation';
-        else if (currentWingspan < 15) wingspanTypeLabel.textContent = 'Type: Medium Transport';
-        else if (currentWingspan < 18) wingspanTypeLabel.textContent = 'Type: Regional Airliner';
-        else wingspanTypeLabel.textContent = 'Type: Wide-body Airliner';
+        if (currentWingspan < 8) wingspanTypeLabel.textContent = 'Tip: Hafif Uçak';
+        else if (currentWingspan < 12) wingspanTypeLabel.textContent = 'Tip: Genel Havacılık';
+        else if (currentWingspan < 15) wingspanTypeLabel.textContent = 'Tip: Orta Ölçekli Taşıma';
+        else if (currentWingspan < 18) wingspanTypeLabel.textContent = 'Tip: Bölgesel Hat Uçağı';
+        else wingspanTypeLabel.textContent = 'Tip: Geniş Gövdeli Uçak';
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
         await updateScene(data);
     });
 
@@ -293,7 +341,7 @@ function createLiftSlider() {
         rootChordInput.value = currentRootChord.toFixed(1);
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
         await updateScene(data);
     });
 
@@ -302,13 +350,13 @@ function createLiftSlider() {
         console.log('NACA input changed to:', currentNaca);
         // Validate NACA format (should be 4 digits)
         if (!/^\d{4}$/.test(currentNaca)) {
-            alert('NACA airfoil must be 4 digits (e.g., 4656)');
+            alert('NACA kanat profili 4 rakamdan oluşmalıdır (örn: 4656)');
             nacaInput.value = currentNaca = '4656';
             return;
         }
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
         await updateScene(data);
     });
 
@@ -317,7 +365,16 @@ function createLiftSlider() {
         dihedralValueDisplay.textContent = `${currentDihedral.toFixed(1)}°`;
 
         // Fetch and update
-        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
+        await updateScene(data);
+    });
+
+    taperRatioSlider.addEventListener('input', async (e) => {
+        currentTaperRatio = parseFloat(e.target.value);
+        taperRatioValueDisplay.textContent = currentTaperRatio.toFixed(2);
+
+        // Fetch and update
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
         await updateScene(data);
     });
 
@@ -333,6 +390,10 @@ function createLiftSlider() {
     container.appendChild(dihedralLabel);
     container.appendChild(dihedralSlider);
     container.appendChild(dihedralValueDisplay);
+    container.appendChild(taperRatioLabel);
+    container.appendChild(taperRatioSlider);
+    container.appendChild(taperRatioValueDisplay);
+    container.appendChild(taperRatioInfo);
     document.body.appendChild(container);
 }
 
@@ -378,7 +439,7 @@ async function updateScene(data) {
 // Main visualization function
 async function init() {
     // Fetch initial data
-    const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+    const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio);
 
     // Three.js setup
     scene = new THREE.Scene();
