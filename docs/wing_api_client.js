@@ -1,6 +1,5 @@
 // wing_api_client.js
 // Fetches wing geometry from FastAPI backend and visualizes with Three.js
-// GitHub Pages compatible version with mock data fallback
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -13,133 +12,12 @@ let currentNaca = '4656';
 let currentDihedral = 5.0;
 let currentTaperRatio = 0.5;
 let currentShiftAmount = 1.0;
-let useBackend = false; // GitHub Pages mode by default
-
-// Check if backend is available
-async function checkBackend() {
-    try {
-        const response = await fetch('http://127.0.0.1:8000/health', {
-            method: 'GET',
-            mode: 'cors',
-            signal: AbortSignal.timeout(1000)
-        });
-        return response.ok;
-    } catch {
-        return false;
-    }
-}
-
-// Generate mock wing data for GitHub Pages
-function generateMockWingData(wingspan = 12.0, rootChord = 3.0, naca = '4656', dihedral = 5.0, taperRatio = 0.5, shiftAmount = 1.0) {
-    const wingArea = wingspan * rootChord * (1 + taperRatio) / 2;
-    const aspectRatio = (wingspan * wingspan) / wingArea;
-    const dihedralRad = dihedral * Math.PI / 180;
-    const effectiveSpan = wingspan * Math.cos(dihedralRad);
-    const effectiveArea = wingArea * Math.cos(dihedralRad);
-
-    // Generate simple wing mesh
-    const segments = 20;
-    const vertices = [];
-    const indices = [];
-
-    // Generate wing surface
-    for (let i = 0; i <= segments; i++) {
-        const t = i / segments;
-        const y = wingspan / 2 * (t * 2 - 1);
-        const chord = rootChord * (1 - (1 - taperRatio) * Math.abs(t * 2 - 1));
-        const z = Math.abs(y) * Math.tan(dihedralRad);
-
-        for (let j = 0; j <= segments; j++) {
-            const s = j / segments;
-            const x = (s - 0.5) * chord;
-            const thickness = 0.12 * chord * (1 - Math.pow(2 * s - 1, 2)); // Approximate airfoil thickness
-
-            vertices.push(x, y, z + thickness * shiftAmount);
-        }
-    }
-
-    // Generate indices
-    for (let i = 0; i < segments; i++) {
-        for (let j = 0; j < segments; j++) {
-            const a = i * (segments + 1) + j;
-            const b = a + segments + 1;
-            const c = a + 1;
-            const d = b + 1;
-
-            indices.push(a, b, c);
-            indices.push(c, b, d);
-        }
-    }
-
-    // Calculate aerodynamics
-    const nacaDigits = naca.split('').map(Number);
-    const maxCamber = nacaDigits[0] / 100;
-    const baseCL = 0.3 + maxCamber * 10;
-    const dihedralFactor = Math.cos(dihedralRad * 0.5);
-    const effectiveCL = baseCL * dihedralFactor;
-    const Cdi = (effectiveCL * effectiveCL) / (Math.PI * aspectRatio);
-
-    const exampleSpeed = 50;
-    const exampleAoA = 5;
-    const density = 1.225;
-    const liftForceN = 0.5 * density * exampleSpeed * exampleSpeed * effectiveArea * effectiveCL;
-    const liftForceKgf = liftForceN / 9.81;
-
-    return {
-        wing_parameters: {
-            naca_profile: naca,
-            chord_root: rootChord,
-            span: wingspan,
-            effective_span: effectiveSpan,
-            wing_area_m2: wingArea.toFixed(2),
-            effective_wing_area_m2: effectiveArea,
-            aspect_ratio: aspectRatio.toFixed(2),
-            taper_ratio: taperRatio,
-            thickness_factor: nacaDigits[2] * 0.01 + nacaDigits[3] * 0.001,
-            dihedral_angle_deg: dihedral,
-            shift_amount: shiftAmount,
-            morph_start: 0.3
-        },
-        aerodynamics: {
-            lift_coefficient: baseCL.toFixed(3),
-            effective_lift_coefficient: effectiveCL,
-            induced_drag_coefficient: Cdi.toFixed(4),
-            dihedral_effect_factor: dihedralFactor.toFixed(3),
-            example_speed_ms: exampleSpeed,
-            example_aoa_deg: exampleAoA,
-            example_lift_force_N: liftForceN.toFixed(1),
-            example_lift_force_kgf: liftForceKgf.toFixed(1)
-        },
-        geometries: [
-            {
-                mesh_vertices: vertices,
-                mesh_indices: indices,
-                color: '#3A7BD5',
-                material: 'plastic',
-                position: [0, 0, 0]
-            }
-        ]
-    };
-}
 
 async function fetchWingData(wingspan = 12.0, rootChord = 3.0, naca = '4656', dihedral = 5.0, taperRatio = 0.5, shiftAmount = 1.0) {
     console.log('Fetching wing data with:', { wingspan, rootChord, naca, dihedral, taperRatio, shiftAmount });
-
-    if (useBackend) {
-        try {
-            const response = await fetch(`http://127.0.0.1:8000/generate-wing?wingspan=${wingspan}&root_chord=${rootChord}&naca=${naca}&dihedral=${dihedral}&taper_ratio=${taperRatio}&shift_amount=${shiftAmount}`);
-            const data = await response.json();
-            console.log('Received wing data from backend:', data);
-            return data;
-        } catch (error) {
-            console.warn('Backend not available, using mock data');
-            useBackend = false;
-        }
-    }
-
-    // Use mock data for GitHub Pages
-    const data = generateMockWingData(wingspan, rootChord, naca, dihedral, taperRatio, shiftAmount);
-    console.log('Generated mock wing data:', data);
+    const response = await fetch(`http://127.0.0.1:8000/generate-wing?wingspan=${wingspan}&root_chord=${rootChord}&naca=${naca}&dihedral=${dihedral}&taper_ratio=${taperRatio}&shift_amount=${shiftAmount}`);
+    const data = await response.json();
+    console.log('Received wing data:', data);
     return data;
 }
 
@@ -168,9 +46,6 @@ function createInfoPanel() {
             ✈️ UÇAK PARAMETRELERİ
         </h3>
         <div id="info-content">Yükleniyor...</div>
-        <div id="backend-status" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 10px; color: #888; text-align: center;">
-            Mod: GitHub Pages (Demo)
-        </div>
     `;
 
     document.body.appendChild(panel);
@@ -209,7 +84,7 @@ function updateInfoPanel(data) {
         <div>
             <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🌬️ AERODİNAMİK</div>
             <div style="line-height: 1.8; padding-left: 10px;">
-                <div>C<sub>L</sub> (Temel): <span style="color: #4CAF50">${aero.lift_coefficient}</span></div>
+                <div>C<sub>L</sub> (Temel): <span style="color: #4CAF50">${aero.lift_coefficient.toFixed(3)}</span></div>
                 ${aero.effective_lift_coefficient ? `<div>C<sub>L</sub> (Efektif): <span style="color: #2196F3; font-weight: bold;">${aero.effective_lift_coefficient.toFixed(3)}</span></div>` : ''}
                 <div>C<sub>Di</sub> (Sürükleme): <span style="color: #FF6B6B">${aero.induced_drag_coefficient}</span></div>
                 ${aero.dihedral_effect_factor ? `<div style="font-size: 11px; color: #888;">Dihedral faktörü: ${aero.dihedral_effect_factor}</div>` : ''}
@@ -221,13 +96,6 @@ function updateInfoPanel(data) {
             </div>
         </div>
     `;
-
-    // Update backend status
-    const statusDiv = document.getElementById('backend-status');
-    if (statusDiv) {
-        statusDiv.textContent = useBackend ? 'Mod: Backend API' : 'Mod: GitHub Pages (Demo)';
-        statusDiv.style.color = useBackend ? '#4CAF50' : '#FF9800';
-    }
 }
 
 function createLiftSlider() {
@@ -244,8 +112,6 @@ function createLiftSlider() {
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         z-index: 1000;
         min-width: 280px;
-        max-height: 85vh;
-        overflow-y: auto;
     `;
 
     const title = document.createElement('h3');
@@ -604,8 +470,8 @@ async function updateScene(data) {
     // Add geometries
     data.geometries.forEach(geomData => {
         const geometry = new THREE.BufferGeometry();
-        const vertices = new Float32Array(geomData.mesh_vertices);
-        const indices = new Uint32Array(geomData.mesh_indices);
+        const vertices = new Float32Array(geomData.mesh_vertices.flat());
+        const indices = new Uint32Array(geomData.mesh_indices.flat());
 
         geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
         geometry.setIndex(new THREE.BufferAttribute(indices, 1));
@@ -633,18 +499,6 @@ async function updateScene(data) {
 
 // Main visualization function
 async function init() {
-    // Hide loading indicator
-    const loadingDiv = document.getElementById('loading');
-
-    // Check if backend is available
-    console.log('Checking backend availability...');
-    useBackend = await checkBackend();
-    console.log('Backend available:', useBackend);
-
-    if (loadingDiv) {
-        loadingDiv.textContent = useBackend ? 'Backend bağlandı...' : 'GitHub Pages modunda başlatılıyor...';
-    }
-
     // Fetch initial data
     const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral, currentTaperRatio, currentShiftAmount);
 
@@ -658,25 +512,16 @@ async function init() {
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
     document.body.style.margin = '0';
     document.body.appendChild(renderer.domElement);
 
-    // HDR environment lighting (optional for GitHub Pages)
+    // HDR environment lighting
     const loader = new RGBELoader();
-    loader.load(
-        'assets/plains_sunset_4k.hdr',
-        (texture) => {
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            scene.environment = texture;
-            scene.background = texture;
-        },
-        undefined,
-        (error) => {
-            console.warn('HDR texture not found, using solid background');
-            scene.background = new THREE.Color(0x203040);
-        }
-    );
+    loader.load('assets/plains_sunset_4k.hdr', (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.environment = texture;
+        scene.background = texture;
+    });
 
     // controls
     controls = new OrbitControls(camera, renderer.domElement);
@@ -696,11 +541,6 @@ async function init() {
 
     // Add initial geometries
     await updateScene(data);
-
-    // Hide loading indicator
-    if (loadingDiv) {
-        loadingDiv.style.display = 'none';
-    }
 
     // Responsive resize
     window.addEventListener('resize', () => {
