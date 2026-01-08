@@ -6,12 +6,17 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 let scene, camera, renderer, controls;
-let currentLift = 0.5;
 let currentWingspan = 12.0;
+let currentRootChord = 3.0;
+let currentNaca = '4656';
+let currentDihedral = 5.0;
 
-async function fetchWingData(lift = 0.5, wingspan = 12.0) {
-    const response = await fetch(`http://127.0.0.1:8000/generate-wing?lift=${lift}&wingspan=${wingspan}`);
-    return await response.json();
+async function fetchWingData(wingspan = 12.0, rootChord = 3.0, naca = '4656', dihedral = 5.0) {
+    console.log('Fetching wing data with:', { wingspan, rootChord, naca, dihedral });
+    const response = await fetch(`http://127.0.0.1:8000/generate-wing?wingspan=${wingspan}&root_chord=${rootChord}&naca=${naca}&dihedral=${dihedral}`);
+    const data = await response.json();
+    console.log('Received wing data:', data);
+    return data;
 }
 
 function createInfoPanel() {
@@ -78,7 +83,7 @@ function updateInfoPanel(data) {
                 <div>C<sub>L</sub> (Lift): <span style="color: #4CAF50; font-weight: bold;">${aero.lift_coefficient.toFixed(3)}</span></div>
                 <div>C<sub>Di</sub> (Drag): <span style="color: #FF6B6B">${aero.induced_drag_coefficient}</span></div>
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
-                    <div style="color: #888; font-size: 11px; margin-bottom: 4px;">@ ${aero.example_speed_ms} m/s:</div>
+                    <div style="color: #888; font-size: 11px; margin-bottom: 4px;">@ ${aero.example_speed_ms} m/s, AoA ${aero.example_aoa_deg || 5}°:</div>
                     <div>Lift Force: <span style="color: #4CAF50">${aero.example_lift_force_kgf} kgf</span></div>
                     <div style="font-size: 11px; color: #888;">(${aero.example_lift_force_N} N)</div>
                 </div>
@@ -113,51 +118,6 @@ function createLiftSlider() {
         padding-bottom: 5px;
     `;
 
-    // Lift slider section
-    const liftLabel = document.createElement('label');
-    liftLabel.textContent = 'Lift Coefficient (CL)';
-    liftLabel.style.cssText = `
-        font-family: 'Courier New', monospace;
-        font-size: 13px;
-        color: white;
-        display: block;
-        margin-bottom: 10px;
-    `;
-
-    const liftSlider = document.createElement('input');
-    liftSlider.type = 'range';
-    liftSlider.min = '0';
-    liftSlider.max = '1';
-    liftSlider.step = '0.01';
-    liftSlider.value = '0.5';
-    liftSlider.style.cssText = `
-        width: 100%;
-        margin: 10px 0;
-        accent-color: #4CAF50;
-    `;
-
-    const liftValueDisplay = document.createElement('div');
-    liftValueDisplay.textContent = '0.500';
-    liftValueDisplay.style.cssText = `
-        font-family: 'Courier New', monospace;
-        font-size: 20px;
-        color: #4CAF50;
-        text-align: center;
-        margin-top: 5px;
-        font-weight: bold;
-    `;
-
-    const modeLabel = document.createElement('div');
-    modeLabel.textContent = 'Mode: Cruise';
-    modeLabel.style.cssText = `
-        font-family: 'Courier New', monospace;
-        font-size: 11px;
-        color: #888;
-        text-align: center;
-        margin-top: 5px;
-        margin-bottom: 20px;
-    `;
-
     // Wingspan slider section
     const wingspanLabel = document.createElement('label');
     wingspanLabel.textContent = 'Wingspan (m)';
@@ -167,9 +127,6 @@ function createLiftSlider() {
         color: white;
         display: block;
         margin-bottom: 10px;
-        margin-top: 15px;
-        border-top: 1px solid rgba(255,255,255,0.2);
-        padding-top: 15px;
     `;
 
     const wingspanSlider = document.createElement('input');
@@ -205,22 +162,110 @@ function createLiftSlider() {
         margin-top: 5px;
     `;
 
+    // Root Chord input section
+    const rootChordLabel = document.createElement('label');
+    rootChordLabel.textContent = 'Root Chord (m)';
+    rootChordLabel.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        color: white;
+        display: block;
+        margin-bottom: 10px;
+        margin-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 15px;
+    `;
+
+    const rootChordInput = document.createElement('input');
+    rootChordInput.type = 'number';
+    rootChordInput.min = '1.0';
+    rootChordInput.max = '10.0';
+    rootChordInput.step = '0.1';
+    rootChordInput.value = '3.0';
+    rootChordInput.style.cssText = `
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 5px;
+        color: #FF9800;
+        font-family: 'Courier New', monospace;
+        font-size: 16px;
+        font-weight: bold;
+    `;
+
+    // NACA input section
+    const nacaLabel = document.createElement('label');
+    nacaLabel.textContent = 'NACA Airfoil';
+    nacaLabel.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        color: white;
+        display: block;
+        margin-bottom: 10px;
+        margin-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 15px;
+    `;
+
+    const nacaInput = document.createElement('input');
+    nacaInput.type = 'text';
+    nacaInput.maxLength = '4';
+    nacaInput.value = '4656';
+    nacaInput.placeholder = 'e.g., 4656';
+    nacaInput.style.cssText = `
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 5px;
+        color: #9C27B0;
+        font-family: 'Courier New', monospace;
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+    `;
+
+    // Dihedral Angle slider section
+    const dihedralLabel = document.createElement('label');
+    dihedralLabel.textContent = 'Dihedral Angle (°)';
+    dihedralLabel.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        color: white;
+        display: block;
+        margin-bottom: 10px;
+        margin-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 15px;
+    `;
+
+    const dihedralSlider = document.createElement('input');
+    dihedralSlider.type = 'range';
+    dihedralSlider.min = '0';
+    dihedralSlider.max = '15';
+    dihedralSlider.step = '0.5';
+    dihedralSlider.value = '5';
+    dihedralSlider.style.cssText = `
+        width: 100%;
+        margin: 10px 0;
+        accent-color: #FF5722;
+    `;
+
+    const dihedralValueDisplay = document.createElement('div');
+    dihedralValueDisplay.textContent = '5.0°';
+    dihedralValueDisplay.style.cssText = `
+        font-family: 'Courier New', monospace;
+        font-size: 20px;
+        color: #FF5722;
+        text-align: center;
+        margin-top: 5px;
+        font-weight: bold;
+    `;
+
     // Event listeners
-    liftSlider.addEventListener('input', async (e) => {
-        currentLift = parseFloat(e.target.value);
-        liftValueDisplay.textContent = currentLift.toFixed(3);
-
-        // Update mode label
-        if (currentLift < 0.25) modeLabel.textContent = 'Mode: High Speed';
-        else if (currentLift < 0.6) modeLabel.textContent = 'Mode: Cruise';
-        else if (currentLift < 0.8) modeLabel.textContent = 'Mode: Takeoff';
-        else modeLabel.textContent = 'Mode: Landing';
-
-        // Fetch and update
-        const data = await fetchWingData(currentLift, currentWingspan);
-        await updateScene(data);
-    });
-
     wingspanSlider.addEventListener('input', async (e) => {
         currentWingspan = parseFloat(e.target.value);
         wingspanValueDisplay.textContent = `${currentWingspan.toFixed(1)} m`;
@@ -233,19 +278,57 @@ function createLiftSlider() {
         else wingspanTypeLabel.textContent = 'Type: Wide-body Airliner';
 
         // Fetch and update
-        const data = await fetchWingData(currentLift, currentWingspan);
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+        await updateScene(data);
+    });
+
+    rootChordInput.addEventListener('change', async (e) => {
+        currentRootChord = parseFloat(e.target.value);
+        if (currentRootChord < 1.0) currentRootChord = 1.0;
+        if (currentRootChord > 10.0) currentRootChord = 10.0;
+        rootChordInput.value = currentRootChord.toFixed(1);
+
+        // Fetch and update
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+        await updateScene(data);
+    });
+
+    nacaInput.addEventListener('change', async (e) => {
+        currentNaca = e.target.value;
+        console.log('NACA input changed to:', currentNaca);
+        // Validate NACA format (should be 4 digits)
+        if (!/^\d{4}$/.test(currentNaca)) {
+            alert('NACA airfoil must be 4 digits (e.g., 4656)');
+            nacaInput.value = currentNaca = '4656';
+            return;
+        }
+
+        // Fetch and update
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
+        await updateScene(data);
+    });
+
+    dihedralSlider.addEventListener('input', async (e) => {
+        currentDihedral = parseFloat(e.target.value);
+        dihedralValueDisplay.textContent = `${currentDihedral.toFixed(1)}°`;
+
+        // Fetch and update
+        const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
         await updateScene(data);
     });
 
     container.appendChild(title);
-    container.appendChild(liftLabel);
-    container.appendChild(liftSlider);
-    container.appendChild(liftValueDisplay);
-    container.appendChild(modeLabel);
     container.appendChild(wingspanLabel);
     container.appendChild(wingspanSlider);
     container.appendChild(wingspanValueDisplay);
     container.appendChild(wingspanTypeLabel);
+    container.appendChild(rootChordLabel);
+    container.appendChild(rootChordInput);
+    container.appendChild(nacaLabel);
+    container.appendChild(nacaInput);
+    container.appendChild(dihedralLabel);
+    container.appendChild(dihedralSlider);
+    container.appendChild(dihedralValueDisplay);
     document.body.appendChild(container);
 }
 
@@ -291,7 +374,7 @@ async function updateScene(data) {
 // Main visualization function
 async function init() {
     // Fetch initial data
-    const data = await fetchWingData(currentLift, currentWingspan);
+    const data = await fetchWingData(currentWingspan, currentRootChord, currentNaca, currentDihedral);
 
     // Three.js setup
     scene = new THREE.Scene();
