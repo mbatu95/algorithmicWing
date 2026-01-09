@@ -75,3 +75,5 @@ bin/
 # .next/
 # .expo/
 # .vercel/
+
+.claude/
